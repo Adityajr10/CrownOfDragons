@@ -9,7 +9,7 @@
 
 /*class ADragonBaseAI;*/
 
-UCLASS()
+UCLASS(Blueprintable, BlueprintType)
 class FLIGHTSYSTEM_API UDragonAbility : public UObject
 {
 	GENERATED_BODY()

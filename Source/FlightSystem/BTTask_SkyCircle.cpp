@@ -33,8 +33,8 @@ EBTNodeResult::Type UBTTask_SkyCircle::ExecuteTask(
 	if (!AbilityComp)
 		return EBTNodeResult::Failed;
 
-	UDragonAbility_SkyCircle* Ability =
-		NewObject<UDragonAbility_SkyCircle>(Dragon);
+	UDragonAbility* Ability =
+	NewObject<UDragonAbility>(Dragon, AbilityClass);
 
 	AbilityComp->StartAbility(Ability, nullptr);
 

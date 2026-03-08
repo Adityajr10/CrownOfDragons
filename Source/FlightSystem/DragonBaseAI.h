@@ -8,6 +8,8 @@
 #include "GameFramework/Character.h"
 #include "DragonBaseAI.generated.h"
 
+class UDragonAbilityComponent;
+
 UCLASS()
 class FLIGHTSYSTEM_API ADragonBaseAI : public ACharacter
 {
@@ -33,6 +35,9 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UDragonFireBreathComponent* FireBreath;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dragon|Ability")
+	UDragonAbilityComponent* AbilityComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool IsFlying;

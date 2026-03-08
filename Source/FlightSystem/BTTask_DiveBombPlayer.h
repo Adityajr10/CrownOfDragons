@@ -6,6 +6,7 @@
 #include "BehaviorTree/BTTaskNode.h"
 #include "BTTask_DiveBombPlayer.generated.h"
 
+class UDragonAbility;
 /**
  * 
  */
@@ -17,6 +18,8 @@ public:
 	UBTTask_DiveBombPlayer();
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
 
+	UPROPERTY(EditAnywhere, Category="Ability")
+	TSubclassOf<UDragonAbility> AbilityClass;
 protected:
 	virtual void TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
 	virtual uint16 GetInstanceMemorySize() const override;

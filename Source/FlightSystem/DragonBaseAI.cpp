@@ -3,6 +3,7 @@
 
 #include "DragonBaseAI.h"
 #include "DragonFlightComponent.h"
+#include "AI/Component/DragonAbilityComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 ADragonBaseAI::ADragonBaseAI()
@@ -12,6 +13,7 @@ ADragonBaseAI::ADragonBaseAI()
 	// Add flight brain
 	FlightComponent = CreateDefaultSubobject<UDragonFlightComponent>(TEXT("FlightComponent"));
 	FireBreath = CreateDefaultSubobject<UDragonFireBreathComponent>(TEXT("FireBreath"));
+	AbilityComponent = CreateDefaultSubobject<UDragonAbilityComponent>(TEXT("AbilityComponent"));
 
 
 	// Base flight setup

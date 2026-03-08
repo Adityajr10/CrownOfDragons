@@ -4,13 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "AI/Ability/DragonAbility.h"
-#include "DragonAbility_SkyCircle.generated.h"
+#include "DragonAbility_DiveBomb.generated.h"
 
 /**
  * 
  */
-UCLASS(Blueprintable)
-class FLIGHTSYSTEM_API UDragonAbility_SkyCircle : public UDragonAbility
+UCLASS()
+class FLIGHTSYSTEM_API UDragonAbility_DiveBomb : public UDragonAbility
 {
 	GENERATED_BODY()
 public:
@@ -20,5 +20,6 @@ public:
 
 protected:
 
-	float CircleAngle = 0.f;
+	FVector ClimbTarget;
+	bool bReachedTop = false;
 };
