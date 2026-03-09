@@ -39,4 +39,33 @@ public:
 	// Current selected ability
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AI")
 	EDragonAbilityType CurrentAbility = EDragonAbilityType::None;
+	
+	/* ================= Energy System ================= */
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Energy")
+	float MaxEnergy = 100.f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Energy")
+	float CurrentEnergy = 100.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Energy")
+	float EnergyRegenRate = 10.f;
+	
+	void ConsumeEnergy(float Amount);
+
+	void RegenerateEnergy(float DeltaTime);
+
+	/* ================= Cooldown Tracking ================= */
+
+	UPROPERTY()
+	TMap<EDragonAbilityType, float> LastAbilityUseTime;
+
+	/* ================= Validation ================= */
+
+	bool CanUseAbility(const FDragonAbilityData& AbilityData) const;
+
+	/* ================= Ability Usage ================= */
+
+	void UseAbility(const FDragonAbilityData& AbilityData);
+
 };
