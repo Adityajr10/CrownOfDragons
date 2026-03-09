@@ -4,74 +4,110 @@
 #include "AI/Ability/DragonFireProjectile.h"
 #include "AI/AbilityActor/DragonFireActor.h"
 
-void UDragonFireProjectile::Start(ADragonBaseAI* InOwner, AActor* InTarget)
+/*void UDragonFireProjectile::Start(ADragonBaseAI* InOwner, AActor* InTarget)
 {
 	Super::Start(InOwner, InTarget);
 
 	SpawnTimer = 0.f;
 	SpawnedCount = 0;
+}*/
+
+void UDragonFireProjectile::Start(ADragonBaseAI* InOwner, AActor* InTarget)
+{
+    Super::Start(InOwner, InTarget);
+
+    MoveTarget = FVector::ZeroVector;
+    bReachedPoint = false;
+    bFired = false;
 }
 
 void UDragonFireProjectile::Tick(float DeltaTime)
 {
-	if (!OwnerDragon || !TargetActor) return;
+    if (!OwnerDragon || !TargetActor) return;
 
-	SpawnTimer += DeltaTime;
+    UDragonFlightComponent* Flight =
+        OwnerDragon->FindComponentByClass<UDragonFlightComponent>();
 
-	UDragonFlightComponent* Flight =
-		OwnerDragon->FindComponentByClass<UDragonFlightComponent>();
+    if (!Flight) return;
 
-	if (!Flight) return;
+    /* ---------- PHASE 1 : MOVE TO POINT ---------- */
 
-	// Generate new movement target only when needed
-	if (!bHasMoveTarget)
-	{
-		FVector PlayerLoc = TargetActor->GetActorLocation();
+    if (!bReachedPoint)
+    {
+        if (MoveTarget.IsZero())
+        {
+            FVector PlayerLoc = TargetActor->GetActorLocation();
 
-		FVector Offset;
-		Offset.X = FMath::FRandRange(-MoveRadius, MoveRadius);
-		Offset.Y = FMath::FRandRange(-MoveRadius, MoveRadius);
-		Offset.Z = MoveHeight;
+            FVector Offset;
+            Offset.X = FMath::FRandRange(-MoveRadius, MoveRadius);
+            Offset.Y = FMath::FRandRange(-MoveRadius, MoveRadius);
+            Offset.Z = MoveHeight;
 
-		CurrentMoveTarget = PlayerLoc + Offset;
+            MoveTarget = PlayerLoc + Offset;
+        }
 
-		bHasMoveTarget = true;
-	}
-	
-	Flight->SetAirTarget(CurrentMoveTarget);
+        Flight->SetAirTarget(MoveTarget);
 
-	if (SpawnTimer < SpawnInterval) return;
+        float Dist =
+            FVector::Dist(MoveTarget, OwnerDragon->GetActorLocation());
 
-	SpawnTimer = 0.f;
+        if (Dist < 350.f)
+        {
+            bReachedPoint = true;
+        }
 
-	if (!FireActorClass) return;
+        return;
+    }
 
-	FVector SpawnLoc =
-		OwnerDragon->GetMesh()->GetSocketLocation("Tongue");
+    /* ---------- PHASE 2 : ROTATE TOWARD PLAYER ---------- */
 
-	FVector Dir =
-		(TargetActor->GetActorLocation() - SpawnLoc).GetSafeNormal();
+    FVector DragonLoc = OwnerDragon->GetActorLocation();
+    FVector PlayerLoc = TargetActor->GetActorLocation();
 
-	FRotator Rot = Dir.Rotation();
+    FRotator CurrentRot = OwnerDragon->GetActorRotation();
+    FRotator TargetRot = (PlayerLoc - DragonLoc).Rotation();
 
-	ADragonFireActor* Fire =
-		OwnerDragon->GetWorld()->SpawnActor<ADragonFireActor>(
-			FireActorClass,
-			SpawnLoc,
-			Rot
-		);
+    FRotator NewRot =
+        FMath::RInterpTo(CurrentRot, TargetRot, DeltaTime, 3.f);
 
-	if (Fire)
-	{
-		Fire->Init(Dir);
-	}
+    OwnerDragon->SetActorRotation(NewRot);
 
-	SpawnedCount++;
-	
-	bHasMoveTarget = false;
+    float Angle =
+        FMath::Abs((TargetRot - NewRot).Yaw);
 
-	if (SpawnedCount >= MaxSpawns)
-	{
-		bFinished = true;
-	}
+    if (Angle > 5.f)
+    {
+        return;
+    }
+
+    /* ---------- PHASE 3 : FIRE ---------- */
+
+    if (!bFired)
+    {
+        bFired = true;
+
+        if (!FireActorClass) return;
+
+        FVector SpawnLoc =
+            OwnerDragon->GetMesh()->GetSocketLocation("Tongue");
+
+        FVector Dir =
+            (PlayerLoc - SpawnLoc).GetSafeNormal();
+
+        FRotator Rot = Dir.Rotation();
+
+        ADragonFireActor* Fire =
+            OwnerDragon->GetWorld()->SpawnActor<ADragonFireActor>(
+                FireActorClass,
+                SpawnLoc,
+                Rot
+            );
+
+        if (Fire)
+        {
+            Fire->Init(Dir);
+        }
+
+        bFinished = true;
+    }
 }

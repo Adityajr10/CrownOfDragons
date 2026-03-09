@@ -36,4 +36,10 @@ protected:
 	
 	FVector CurrentMoveTarget;
 	bool bHasMoveTarget = false;
+	bool bIsRotatingToTarget = false;
+	
+	FVector MoveTarget;
+
+	bool bReachedPoint = false;
+	bool bFired = false;
 };

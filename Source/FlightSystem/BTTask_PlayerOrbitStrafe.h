@@ -6,6 +6,7 @@
 #include "BehaviorTree/BTTaskNode.h"
 #include "BTTask_PlayerOrbitStrafe.generated.h"
 
+class UDragonAbility;
 /**
  * 
  */
@@ -15,12 +16,22 @@ class FLIGHTSYSTEM_API UBTTask_PlayerOrbitStrafe : public UBTTaskNode
 	GENERATED_BODY()
 public:
 	UBTTask_PlayerOrbitStrafe();
-	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
-	virtual void TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
+	
+	virtual EBTNodeResult::Type ExecuteTask(
+		UBehaviorTreeComponent& OwnerComp,
+		uint8* NodeMemory) override;
+
+	virtual void TickTask(
+		UBehaviorTreeComponent& OwnerComp,
+		uint8* NodeMemory,
+		float DeltaSeconds) override;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<UDragonAbility> AbilityClass;
 
 private:
 	bool bFireStarted = false;
 
-protected:
-	virtual void OnTaskFinished(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, EBTNodeResult::Type TaskResult) override;
+/*protected:
+	virtual void OnTaskFinished(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, EBTNodeResult::Type TaskResult) override;*/
 };

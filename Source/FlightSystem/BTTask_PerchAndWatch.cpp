@@ -12,6 +12,8 @@
 #include "DragonBaseAI.h"
 #include "DragonFlightComponent.h"
 #include "AIController.h"
+#include "AI/Ability/DragonAbility.h"
+#include "AI/Component/DragonAbilityComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -21,54 +23,28 @@ UBTTask_PerchAndWatch::UBTTask_PerchAndWatch()
     bNotifyTick = true;
 }
 
-EBTNodeResult::Type UBTTask_PerchAndWatch::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
+EBTNodeResult::Type UBTTask_PerchAndWatch::ExecuteTask(
+    UBehaviorTreeComponent& OwnerComp,
+    uint8* NodeMemory)
 {
-    UE_LOG(LogTemp, Warning, TEXT("🐉 PERCH TASK STARTED"));
+    AAIController* AI = OwnerComp.GetAIOwner();
+    if(!AI) return EBTNodeResult::Failed;
 
-    ADragonBaseAI* Dragon = Cast<ADragonBaseAI>(OwnerComp.GetAIOwner()->GetPawn());
-    if (!Dragon)
-    {
-        UE_LOG(LogTemp, Error, TEXT("No Dragon pawn"));
+    ADragonBaseAI* Dragon =
+        Cast<ADragonBaseAI>(AI->GetPawn());
+
+    if(!Dragon) return EBTNodeResult::Failed;
+
+    UDragonAbilityComponent* AbilityComp =
+        Dragon->FindComponentByClass<UDragonAbilityComponent>();
+
+    if(!AbilityComp || !AbilityClass)
         return EBTNodeResult::Failed;
-    }
 
-    // Pick random area around start location
-    FVector Origin = Dragon->StartLocation;
-    FVector RandomXY;
-    RandomXY.X = FMath::FRandRange(Origin.X - 15000.f, Origin.X + 15000.f);
-    RandomXY.Y = FMath::FRandRange(Origin.Y - 15000.f, Origin.Y + 15000.f);
-    RandomXY.Z = Origin.Z + 8000.f; // high in air
+    UDragonAbility* Ability =
+        NewObject<UDragonAbility>(Dragon, AbilityClass);
 
-    FHitResult Hit;
-    FVector TraceStart = RandomXY;
-    FVector TraceEnd = RandomXY - FVector(0, 0, 20000.f);
-
-    bool bHit = Dragon->GetWorld()->LineTraceSingleByChannel(
-        Hit, TraceStart, TraceEnd, ECC_Visibility);
-
-    if (!bHit)
-    {
-        UE_LOG(LogTemp, Error, TEXT("No ground hit found"));
-        return EBTNodeResult::Failed;
-    }
-
-    FVector PerchPoint = Hit.ImpactPoint;
-    PerchPoint.Z += 150.f; // hover slightly above ground
-
-    UE_LOG(LogTemp, Warning, TEXT("Perch found at %s"), *PerchPoint.ToString());
-
-    UDragonFlightComponent* Flight = Dragon->FindComponentByClass<UDragonFlightComponent>();
-    if (!Flight)
-    {
-        UE_LOG(LogTemp, Error, TEXT("No FlightComponent"));
-        return EBTNodeResult::Failed;
-    }
-
-    // Fly down to perch
-    Dragon->GetCharacterMovement()->MaxFlySpeed = 3000.f;
-    Dragon->GetCharacterMovement()->BrakingDecelerationFlying = 5000.f;
-
-    Flight->SetAirTarget(PerchPoint);
+    AbilityComp->StartAbility(Ability, nullptr);
 
     return EBTNodeResult::InProgress;
 }
@@ -103,58 +79,27 @@ EBTNodeResult::Type UBTTask_PerchAndWatch::ExecuteTask(UBehaviorTreeComponent& O
     FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
 }*/
 
-void UBTTask_PerchAndWatch::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
+void UBTTask_PerchAndWatch::TickTask(
+    UBehaviorTreeComponent& OwnerComp,
+    uint8* NodeMemory,
+    float DeltaSeconds)
 {
-    ADragonBaseAI* Dragon = Cast<ADragonBaseAI>(OwnerComp.GetAIOwner()->GetPawn());
+    AAIController* AI = OwnerComp.GetAIOwner();
+    if (!AI) return;
+
+    ADragonBaseAI* Dragon =
+        Cast<ADragonBaseAI>(AI->GetPawn());
+
     if (!Dragon) return;
 
-    FVector Loc = Dragon->GetActorLocation();
-    FVector Target = Dragon->StartLocation;   // Your ground perch target
+    UDragonAbilityComponent* AbilityComp =
+        Dragon->FindComponentByClass<UDragonAbilityComponent>();
 
-    float ZDiff = Loc.Z - Target.Z;
-
-    // Smooth glide descent
-    if (ZDiff > 180.f)
+    if (!AbilityComp->IsAbilityActive())
     {
-        float GlideSpeed = 800.f;
-        Loc.Z -= GlideSpeed * DeltaSeconds;
-        Dragon->SetActorLocation(Loc);
-        return;
+        FinishLatentTask(
+            OwnerComp,
+            EBTNodeResult::Succeeded
+        );
     }
-
-    // Final snap & perch
-    Loc.Z = Target.Z;
-    Dragon->SetActorLocation(Loc);
-
-    Dragon->IsFlying = false;
-
-    UE_LOG(LogTemp, Warning, TEXT("🐉 Dragon LANDED"));
-
-    // Wing fold
-    if (Dragon->WingFoldMontage)
-    {
-        Dragon->PlayAnimMontage(Dragon->WingFoldMontage);
-    }
-
-    // Perch roar loop
-    FTimerHandle RoarTimer;
-    Dragon->GetWorldTimerManager().SetTimer(RoarTimer, [Dragon]()
-    {
-        if (!Dragon->IsFlying && Dragon->PerchRoarMontage)
-        {
-            Dragon->PlayAnimMontage(Dragon->PerchRoarMontage);
-        }
-    }, 3.f, true);
-
-    // Auto takeoff after watch time
-    FTimerHandle TakeoffTimer;
-    Dragon->GetWorldTimerManager().SetTimer(TakeoffTimer, [Dragon]()
-    {
-        if (!Dragon->IsFlying)
-        {
-            Dragon->TakeoffFromPerch();
-        }
-    }, Dragon->PerchWatchTime, false);
-
-    FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
 }

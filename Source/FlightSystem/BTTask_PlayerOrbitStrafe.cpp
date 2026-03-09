@@ -6,66 +6,69 @@
 #include "DragonFlightComponent.h"
 #include "DragonFireBreathComponent.h"
 #include "AIController.h"
+#include "AI/Ability/DragonAbility.h"
+#include "AI/Component/DragonAbilityComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 UBTTask_PlayerOrbitStrafe::UBTTask_PlayerOrbitStrafe()
 {
     bNotifyTick = true;
 }
-
-EBTNodeResult::Type UBTTask_PlayerOrbitStrafe::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
+EBTNodeResult::Type UBTTask_PlayerOrbitStrafe::ExecuteTask(
+    UBehaviorTreeComponent& OwnerComp,
+    uint8* NodeMemory)
 {
-    UE_LOG(LogTemp, Warning, TEXT("ORBIT STRAFE STARTED"));
+    AAIController* AI = OwnerComp.GetAIOwner();
+    if (!AI) return EBTNodeResult::Failed;
+
+    ADragonBaseAI* Dragon =
+        Cast<ADragonBaseAI>(AI->GetPawn());
+
+    if (!Dragon) return EBTNodeResult::Failed;
+
+    UDragonAbilityComponent* AbilityComp =
+        Dragon->FindComponentByClass<UDragonAbilityComponent>();
+
+    if (!AbilityComp || !AbilityClass)
+        return EBTNodeResult::Failed;
+
+    AActor* Player =
+        UGameplayStatics::GetPlayerPawn(Dragon, 0);
+
+    UDragonAbility* Ability =
+        NewObject<UDragonAbility>(Dragon, AbilityClass);
+
+    AbilityComp->StartAbility(Ability, Player);
+
     return EBTNodeResult::InProgress;
 }
 
-void UBTTask_PlayerOrbitStrafe::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
+void UBTTask_PlayerOrbitStrafe::TickTask(
+    UBehaviorTreeComponent& OwnerComp,
+    uint8* NodeMemory,
+    float DeltaSeconds)
 {
-    ADragonBaseAI* Dragon = Cast<ADragonBaseAI>(OwnerComp.GetAIOwner()->GetPawn());
-    if (!Dragon)
+    AAIController* AI = OwnerComp.GetAIOwner();
+    if (!AI) return;
+
+    ADragonBaseAI* Dragon =
+        Cast<ADragonBaseAI>(AI->GetPawn());
+
+    if (!Dragon) return;
+
+    UDragonAbilityComponent* AbilityComp =
+        Dragon->FindComponentByClass<UDragonAbilityComponent>();
+
+    if (!AbilityComp->IsAbilityActive())
     {
-        UE_LOG(LogTemp, Error, TEXT("Dragon invalid"));
-        return;
-    }
-
-    UDragonFlightComponent* Flight = Dragon->FindComponentByClass<UDragonFlightComponent>();
-    if (!Flight)
-    {
-        UE_LOG(LogTemp, Error, TEXT("No FlightComponent"));
-        return;
-    }
-
-    UDragonFireBreathComponent* Fire = Dragon->FindComponentByClass<UDragonFireBreathComponent>();
-    if (!Fire)
-    {
-        UE_LOG(LogTemp, Error, TEXT("No FireBreathComponent"));
-    }
-
-    AActor* Player = UGameplayStatics::GetPlayerPawn(Dragon, 0);
-    if (!Player)
-    {
-        UE_LOG(LogTemp, Error, TEXT("Player not found"));
-        return;
-    }
-
-    FVector ToDragon = (Dragon->GetActorLocation() - Player->GetActorLocation()).GetSafeNormal();
-    FVector Side = FVector::CrossProduct(ToDragon, FVector::UpVector);
-
-    float OrbitRadius = 3500.f;
-    float Height = 1500.f;
-
-    FVector Target = Player->GetActorLocation() + Side * OrbitRadius;
-    Target.Z += Height;
-
-    Flight->SetAirTarget(Target);
-
-    if (Fire)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("STARTING FIRE"));
-        Fire->StartFire(Player);
+        FinishLatentTask(
+            OwnerComp,
+            EBTNodeResult::Succeeded
+        );
     }
 }
 
+/*
 void UBTTask_PlayerOrbitStrafe::OnTaskFinished(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, EBTNodeResult::Type TaskResult)
 {
     UE_LOG(LogTemp, Warning, TEXT("ORBIT STRAFE STOPPED"));
@@ -78,4 +81,4 @@ void UBTTask_PlayerOrbitStrafe::OnTaskFinished(UBehaviorTreeComponent& OwnerComp
     {
         Fire->StopFire();
     }
-}
+}*/

@@ -5,6 +5,8 @@
 
 #include "AIController.h"
 #include "DragonBaseAI.h"
+#include "AI/Component/DragonAbilityComponent.h"
+#include "AI/Ability/DragonAbility.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -15,67 +17,66 @@ struct FStrafeMemory
     bool bFinished = false;
 };
 
-UBTTask_GroundStrafe::UBTTask_GroundStrafe()
-{
-    bNotifyTick = true;
-    NodeName = "Ground Strafe";
-}
-
 uint16 UBTTask_GroundStrafe::GetInstanceMemorySize() const
 {
     return sizeof(FStrafeMemory);
 }
-
-EBTNodeResult::Type UBTTask_GroundStrafe::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
+UBTTask_GroundStrafe::UBTTask_GroundStrafe()
 {
-    ADragonBaseAI* Dragon = Cast<ADragonBaseAI>(OwnerComp.GetAIOwner()->GetPawn());
+    NodeName = "Ground Strafe";
+    bNotifyTick = true;
+}
+
+EBTNodeResult::Type UBTTask_GroundStrafe::ExecuteTask(
+    UBehaviorTreeComponent& OwnerComp,
+    uint8* NodeMemory)
+{
+    AAIController* AI = OwnerComp.GetAIOwner();
+    if (!AI) return EBTNodeResult::Failed;
+
+    ADragonBaseAI* Dragon =
+        Cast<ADragonBaseAI>(AI->GetPawn());
+
     if (!Dragon) return EBTNodeResult::Failed;
 
-    AActor* Player = UGameplayStatics::GetPlayerPawn(Dragon, 0);
-    if (!Player) return EBTNodeResult::Failed;
+    UDragonAbilityComponent* AbilityComp =
+        Dragon->FindComponentByClass<UDragonAbilityComponent>();
 
-    FStrafeMemory* Mem = (FStrafeMemory*)NodeMemory;
+    if (!AbilityComp || !AbilityClass)
+        return EBTNodeResult::Failed;
 
-    FVector Dir = Dragon->GetActorForwardVector();
+    AActor* Player =
+        UGameplayStatics::GetPlayerPawn(Dragon, 0);
 
-    FVector GroundStart = Player->GetActorLocation();
-    GroundStart.Z = Player->GetActorLocation().Z + Dragon->StrafeHeight;
+    UDragonAbility* Ability =
+        NewObject<UDragonAbility>(Dragon, AbilityClass);
 
-    Mem->Start = GroundStart;
-    Mem->End = GroundStart + Dir * Dragon->StrafeDistance;
-
-    Dragon->SetActorLocation(Mem->Start);
-    Dragon->SetActorRotation(Dir.Rotation());
-
-    if (Dragon->StrafeMontage)
-        Dragon->PlayAnimMontage(Dragon->StrafeMontage);
+    AbilityComp->StartAbility(Ability, Player);
 
     return EBTNodeResult::InProgress;
 }
 
-void UBTTask_GroundStrafe::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
+void UBTTask_GroundStrafe::TickTask(
+    UBehaviorTreeComponent& OwnerComp,
+    uint8* NodeMemory,
+    float DeltaSeconds)
 {
-    FStrafeMemory* Mem = (FStrafeMemory*)NodeMemory;
-    ADragonBaseAI* Dragon = Cast<ADragonBaseAI>(OwnerComp.GetAIOwner()->GetPawn());
+    AAIController* AI = OwnerComp.GetAIOwner();
+    if (!AI) return;
+
+    ADragonBaseAI* Dragon =
+        Cast<ADragonBaseAI>(AI->GetPawn());
+
     if (!Dragon) return;
 
-    FVector Dir = (Mem->End - Mem->Start).GetSafeNormal();
+    UDragonAbilityComponent* AbilityComp =
+        Dragon->FindComponentByClass<UDragonAbilityComponent>();
 
-    // REAL flying movement
-    Dragon->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
-    Dragon->GetCharacterMovement()->Velocity = Dir * Dragon->StrafeSpeed;
-
-    // Face movement
-    Dragon->SetActorRotation(Dir.Rotation());
-
-    // Continuous fire carpet
-    Dragon->FireBreath->StartFire(UGameplayStatics::GetPlayerPawn(Dragon, 0));
-
-    // Finish when reached end
-    if (FVector::Dist(Dragon->GetActorLocation(), Mem->End) < 300.f)
+    if (!AbilityComp->IsAbilityActive())
     {
-        Dragon->GetCharacterMovement()->StopMovementImmediately();
-        Dragon->FireBreath->StopFire();
-        FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
+        FinishLatentTask(
+            OwnerComp,
+            EBTNodeResult::Succeeded
+        );
     }
 }
