@@ -4,6 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+
+#include "AI/Data/DragonAITypes.h"
+#include "AI/Data/DragonAbilityData.h"
+#include "AI/Data/DragonPersonalitySettings.h"
 #include "DragonAIBehaviourComponent.generated.h"
 
 
@@ -13,16 +17,26 @@ class FLIGHTSYSTEM_API UDragonAIBehaviourComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:	
-	// Sets default values for this component's properties
 	UDragonAIBehaviourComponent();
 
 protected:
-	// Called when the game starts
 	virtual void BeginPlay() override;
 
-public:	
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+public:
 
-		
+	//Personality configuration 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="AI")
+	FDragonPersonalitySettings PersonalitySettings;
+
+	// Abilities this dragon can use 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="AI")
+	TArray<FDragonAbilityData> AbilitySettings;
+
+	// Current AI State 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AI")
+	EDragonState CurrentState = EDragonState::Idle;
+
+	// Current selected ability
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AI")
+	EDragonAbilityType CurrentAbility = EDragonAbilityType::None;
 };
