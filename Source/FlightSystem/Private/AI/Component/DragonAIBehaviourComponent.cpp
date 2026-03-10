@@ -83,10 +83,7 @@ void UDragonAIBehaviourComponent::EvaluateSituation()
 {
 	SelectInstinct();
 
-	if (CurrentInstinct == EDragonInstinct::Attacking)
-	{
-		SelectAbility();
-	}
+	SelectAbility();
 
 	UpdateBlackboard();
 }
@@ -205,6 +202,10 @@ void UDragonAIBehaviourComponent::SelectAbility()
 
 	for (const FDragonAbilityData& Ability : AbilitySettings)
 	{
+		if (Ability.InstinctType != CurrentInstinct)
+		{
+			continue;
+		}
 		if (!CanUseAbility(Ability))
 		{
 			continue;

@@ -52,6 +52,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AI")
 	EDragonInstinct CurrentInstinct = EDragonInstinct::Roaming;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ability")
+	EDragonInstinct InstinctType = EDragonInstinct::Attacking;
+	
 	
 	//Energy System
 

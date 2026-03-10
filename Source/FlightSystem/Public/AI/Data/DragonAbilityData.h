@@ -11,6 +11,9 @@ struct FDragonAbilityData
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ability")
 	EDragonAbilityType AbilityType = EDragonAbilityType::None;
+	
+	UPROPERTY(EditAnywhere)
+	EDragonInstinct InstinctType = EDragonInstinct::Attacking;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ability")
 	float Cooldown = 5.f;
