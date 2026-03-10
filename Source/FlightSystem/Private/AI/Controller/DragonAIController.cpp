@@ -67,7 +67,10 @@ void ADragonAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 
 	if (Stimulus.WasSuccessfullySensed())
 	{
-		Behaviour->SetTargetActor(Actor);
+		if (Behaviour->IsValidTarget(Actor))
+		{
+			Behaviour->SetTargetActor(Actor);
+		}
 	}
 	else
 	{

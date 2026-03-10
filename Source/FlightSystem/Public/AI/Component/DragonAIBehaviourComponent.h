@@ -131,4 +131,7 @@ public:
 	float TargetMemoryDuration = 10.f;
 
 	float LastSeenTime = 0.f;
+	
+	bool IsValidTarget(AActor* Actor) const;
+	float GetTargetAltitudeDifference() const;
 };

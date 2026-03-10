@@ -29,4 +29,10 @@ struct FDragonAbilityData
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ability")
 	float Weight = 1.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ability")
+	float MinAltitudeDifference = -10000.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ability")
+	float MaxAltitudeDifference = 10000.f;
 };

@@ -213,12 +213,14 @@ void UDragonAIBehaviourComponent::SelectAbility()
 	{
 		return;
 	}
+
 	if (!CanPerformAttack())
 	{
 		return;
 	}
 
 	float DistanceToTarget = GetDistanceToTarget();
+	float AltitudeDiff = GetTargetAltitudeDifference();   // ← ADD HERE
 
 	float BestScore = -1.f;
 	const FDragonAbilityData* BestAbility = nullptr;
@@ -229,32 +231,39 @@ void UDragonAIBehaviourComponent::SelectAbility()
 		{
 			continue;
 		}
+
 		if (!CanUseAbility(Ability))
 		{
 			continue;
 		}
 
 		// Distance check
-
 		if (DistanceToTarget < Ability.PreferredDistanceMin ||
 			DistanceToTarget > Ability.PreferredDistanceMax)
 		{
 			continue;
 		}
 
-		// Base score 
+		// Altitude check (example rule)
+		if (AltitudeDiff < Ability.MinAltitudeDifference ||
+	    AltitudeDiff > Ability.MaxAltitudeDifference)
+		{
+			continue;
+		}
+
+		// Base score
 		float RandomFactor = FMath::FRandRange(0.8f, 1.2f);
 		float Score = Ability.Weight * RandomFactor;
 
-		// Ability repetition penalty 
+		// Ability repetition penalty
 		if (Ability.AbilityType == LastUsedAbility)
 		{
-			Score *= 0.7f;   
+			Score *= 0.7f;
 		}
 
 		if (Ability.AbilityType == SecondLastUsedAbility)
 		{
-			Score *= 0.85f;  
+			Score *= 0.85f;
 		}
 
 		// Select best ability
@@ -332,4 +341,37 @@ void UDragonAIBehaviourComponent::SetTargetActor(AActor* NewTarget)
 		LastKnownTargetLocation = NewTarget->GetActorLocation();
 		LastSeenTime = GetWorld()->GetTimeSeconds();
 	}
+}
+
+bool UDragonAIBehaviourComponent::IsValidTarget(AActor* Actor) const
+{
+	if (!Actor)
+	{
+		return false;
+	}
+
+	if (Actor == GetOwner())
+	{
+		return false;
+	}
+
+	if (Actor->IsActorBeingDestroyed())
+	{
+		return false;
+	}
+
+	return true;
+}
+
+float UDragonAIBehaviourComponent::GetTargetAltitudeDifference() const
+{
+	if (!TargetActor)
+	{
+		return 0.f;
+	}
+
+	float DragonZ = GetOwner()->GetActorLocation().Z;
+	float TargetZ = TargetActor->GetActorLocation().Z;
+
+	return DragonZ - TargetZ;
 }
