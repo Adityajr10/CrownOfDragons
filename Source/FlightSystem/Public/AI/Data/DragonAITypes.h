@@ -27,3 +27,13 @@ enum class EDragonAbilityType : uint8
 	ClawAttack      UMETA(DisplayName="ClawAttack"),
 	WingGust        UMETA(DisplayName="WingGust")
 };
+
+UENUM(BlueprintType)
+enum class EDragonInstinct : uint8
+{
+	Roaming     UMETA(DisplayName="Roaming"),
+	Stalking    UMETA(DisplayName="Stalking"),
+	Threatening UMETA(DisplayName="Threatening"),
+	Attacking   UMETA(DisplayName="Attacking"),
+	Resting     UMETA(DisplayName="Resting")
+};

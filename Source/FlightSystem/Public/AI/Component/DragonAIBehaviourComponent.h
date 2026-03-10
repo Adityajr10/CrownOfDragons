@@ -3,7 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AIController.h"
 #include "Components/ActorComponent.h"
+#include "BehaviorTree/BlackboardComponent.h"
 
 #include "AI/Data/DragonAITypes.h"
 #include "AI/Data/DragonAbilityData.h"
@@ -24,6 +26,13 @@ protected:
 
 public:
 
+	UPROPERTY()
+	AAIController* OwnerAIController;
+	UPROPERTY()
+	UBlackboardComponent* BlackboardComponent;
+	UPROPERTY()
+	AActor* TargetActor = nullptr;
+	
 	//Personality configuration 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="AI")
 	FDragonPersonalitySettings PersonalitySettings;
@@ -40,7 +49,11 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AI")
 	EDragonAbilityType CurrentAbility = EDragonAbilityType::None;
 	
-	/* ================= Energy System ================= */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AI")
+	EDragonInstinct CurrentInstinct = EDragonInstinct::Roaming;
+	
+	
+	//Energy System
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Energy")
 	float MaxEnergy = 100.f;
@@ -55,17 +68,30 @@ public:
 
 	void RegenerateEnergy(float DeltaTime);
 
-	/* ================= Cooldown Tracking ================= */
+	//Cooldown Tracking 
 
 	UPROPERTY()
 	TMap<EDragonAbilityType, float> LastAbilityUseTime;
 
-	/* ================= Validation ================= */
-
+	//Validation 
 	bool CanUseAbility(const FDragonAbilityData& AbilityData) const;
 
-	/* ================= Ability Usage ================= */
-
+	//Ability Usage 
 	void UseAbility(const FDragonAbilityData& AbilityData);
+	
+	// AI Brain
+	void EvaluateSituation();
+	void SelectInstinct();
+	void SelectAbility();
+	float GetDistanceToTarget() const;
+	void UpdateBlackboard();
+	
+	//Ability Memory 
+
+	UPROPERTY()
+	EDragonAbilityType LastUsedAbility = EDragonAbilityType::None;
+
+	UPROPERTY()
+	EDragonAbilityType SecondLastUsedAbility = EDragonAbilityType::None;
 
 };

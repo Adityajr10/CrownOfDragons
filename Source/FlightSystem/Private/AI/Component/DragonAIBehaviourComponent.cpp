@@ -13,6 +13,13 @@ void UDragonAIBehaviourComponent::BeginPlay()
 	Super::BeginPlay();
 
 	CurrentEnergy = MaxEnergy;
+
+	OwnerAIController = Cast<AAIController>(GetOwner()->GetInstigatorController());
+
+	if (OwnerAIController)
+	{
+		BlackboardComponent = OwnerAIController->GetBlackboardComponent();
+	}
 }
 
 bool UDragonAIBehaviourComponent::CanUseAbility(const FDragonAbilityData& AbilityData) const
@@ -22,7 +29,7 @@ bool UDragonAIBehaviourComponent::CanUseAbility(const FDragonAbilityData& Abilit
 	{
 		return false;
 	}
-	/* Check Cooldown */
+	//Check Cooldown 
 	const float* LastTime = LastAbilityUseTime.Find(AbilityData.AbilityType);
 
 	if (LastTime)
@@ -56,12 +63,216 @@ void UDragonAIBehaviourComponent::UseAbility(const FDragonAbilityData& AbilityDa
 {
 	float CurrentTime = GetWorld()->GetTimeSeconds();
 
-	// Record last usage time 
+	// Record cooldown
 	LastAbilityUseTime.Add(AbilityData.AbilityType, CurrentTime);
 
-	/* Consume energy */
+	// Consume energy 
 	ConsumeEnergy(AbilityData.EnergyCost);
 
-	/* Update current ability */
+	//Update ability memory 
+	SecondLastUsedAbility = LastUsedAbility;
+	LastUsedAbility = AbilityData.AbilityType;
+
+	// Set current ability 
 	CurrentAbility = AbilityData.AbilityType;
+}
+
+void UDragonAIBehaviourComponent::EvaluateSituation()
+{
+	SelectInstinct();
+
+	if (CurrentInstinct == EDragonInstinct::Attacking)
+	{
+		SelectAbility();
+	}
+
+	UpdateBlackboard();
+}
+
+void UDragonAIBehaviourComponent::SelectInstinct()
+{
+	float Distance = GetDistanceToTarget();
+
+	float RoamingScore = 0.f;
+	float StalkingScore = 0.f;
+	float ThreatScore = 0.f;
+	float AttackScore = 0.f;
+	float RestScore = 0.f;
+
+	// No target 
+	if (!TargetActor)
+	{
+		RoamingScore += 1.0f;
+	}
+
+	else
+	{
+		// Distance influence 
+		if (Distance > 6000.f)
+		{
+			StalkingScore += 0.8f;
+		}
+		else if (Distance > 2000.f)
+		{
+			ThreatScore += 0.7f;
+		}
+		else
+		{
+			AttackScore += 0.8f;
+		}
+
+		//Personality influence
+		AttackScore += PersonalitySettings.Aggression * 0.5f;
+
+		StalkingScore += PersonalitySettings.Patience * 0.3f;
+
+		ThreatScore += PersonalitySettings.Intelligence * 0.2f;
+	}
+
+	//Energy influence
+	if (CurrentEnergy < 20.f)
+	{
+		RestScore += 1.0f;
+	}
+
+	//Find highest score 
+	float BestScore = RoamingScore;
+	CurrentInstinct = EDragonInstinct::Roaming;
+
+	if (StalkingScore > BestScore)
+	{
+		BestScore = StalkingScore;
+		CurrentInstinct = EDragonInstinct::Stalking;
+	}
+
+	if (ThreatScore > BestScore)
+	{
+		BestScore = ThreatScore;
+		CurrentInstinct = EDragonInstinct::Threatening;
+	}
+
+	if (AttackScore > BestScore)
+	{
+		BestScore = AttackScore;
+		CurrentInstinct = EDragonInstinct::Attacking;
+	}
+
+	if (RestScore > BestScore)
+	{
+		BestScore = RestScore;
+		CurrentInstinct = EDragonInstinct::Resting;
+	}
+
+	// Update State
+	switch (CurrentInstinct)
+	{
+	case EDragonInstinct::Roaming:
+		CurrentState = EDragonState::Roaming;
+		break;
+
+	case EDragonInstinct::Stalking:
+	case EDragonInstinct::Threatening:
+		CurrentState = EDragonState::Observe;
+		break;
+
+	case EDragonInstinct::Attacking:
+		CurrentState = EDragonState::Attack;
+		break;
+
+	case EDragonInstinct::Resting:
+		CurrentState = EDragonState::Rest;
+		break;
+	}
+}
+
+void UDragonAIBehaviourComponent::SelectAbility()
+{
+	if (!TargetActor)
+	{
+		return;
+	}
+
+	float DistanceToTarget = GetDistanceToTarget();
+
+	float BestScore = -1.f;
+	const FDragonAbilityData* BestAbility = nullptr;
+
+	for (const FDragonAbilityData& Ability : AbilitySettings)
+	{
+		if (!CanUseAbility(Ability))
+		{
+			continue;
+		}
+
+		// Distance check
+
+		if (DistanceToTarget < Ability.PreferredDistanceMin ||
+			DistanceToTarget > Ability.PreferredDistanceMax)
+		{
+			continue;
+		}
+
+		// Base score 
+		float RandomFactor = FMath::FRandRange(0.8f, 1.2f);
+		float Score = Ability.Weight * RandomFactor;
+
+		// Ability repetition penalty 
+		if (Ability.AbilityType == LastUsedAbility)
+		{
+			Score *= 0.7f;   
+		}
+
+		if (Ability.AbilityType == SecondLastUsedAbility)
+		{
+			Score *= 0.85f;  
+		}
+
+		// Select best ability
+		if (Score > BestScore)
+		{
+			BestScore = Score;
+			BestAbility = &Ability;
+		}
+	}
+
+	if (BestAbility)
+	{
+		UseAbility(*BestAbility);
+	}
+}
+
+float UDragonAIBehaviourComponent::GetDistanceToTarget() const
+{
+	if (!TargetActor)
+	{
+		return -1.f;
+	}
+
+	return FVector::Dist(
+		GetOwner()->GetActorLocation(),
+		TargetActor->GetActorLocation()
+	);
+}
+
+void UDragonAIBehaviourComponent::UpdateBlackboard()
+{
+	if (!BlackboardComponent)
+	{
+		return;
+	}
+
+	BlackboardComponent->SetValueAsEnum(
+		TEXT("CurrentState"),
+		static_cast<uint8>(CurrentState)
+	);
+
+	BlackboardComponent->SetValueAsEnum(
+		TEXT("CurrentAbility"),
+		static_cast<uint8>(CurrentAbility)
+	);
+
+	BlackboardComponent->SetValueAsObject(
+		TEXT("TargetActor"),
+		TargetActor
+	);
 }
