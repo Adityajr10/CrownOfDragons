@@ -63,18 +63,20 @@ void UDragonAIBehaviourComponent::UseAbility(const FDragonAbilityData& AbilityDa
 {
 	float CurrentTime = GetWorld()->GetTimeSeconds();
 
-	// Record cooldown
 	LastAbilityUseTime.Add(AbilityData.AbilityType, CurrentTime);
 
-	// Consume energy 
 	ConsumeEnergy(AbilityData.EnergyCost);
 
-	//Update ability memory 
 	SecondLastUsedAbility = LastUsedAbility;
 	LastUsedAbility = AbilityData.AbilityType;
 
-	// Set current ability 
 	CurrentAbility = AbilityData.AbilityType;
+
+	//Set next attack time 
+
+	float Delay = FMath::FRandRange(MinAttackInterval, MaxAttackInterval);
+
+	NextAttackTime = CurrentTime + Delay;
 }
 
 void UDragonAIBehaviourComponent::EvaluateSituation()
@@ -191,6 +193,10 @@ void UDragonAIBehaviourComponent::SelectAbility()
 	{
 		return;
 	}
+	if (!CanPerformAttack())
+	{
+		return;
+	}
 
 	float DistanceToTarget = GetDistanceToTarget();
 
@@ -275,4 +281,16 @@ void UDragonAIBehaviourComponent::UpdateBlackboard()
 		TEXT("TargetActor"),
 		TargetActor
 	);
+}
+
+bool UDragonAIBehaviourComponent::CanPerformAttack() const
+{
+	if (!GetWorld())
+	{
+		return false;
+	}
+
+	float CurrentTime = GetWorld()->GetTimeSeconds();
+
+	return CurrentTime >= NextAttackTime;
 }

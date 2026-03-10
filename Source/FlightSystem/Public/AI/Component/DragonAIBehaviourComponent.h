@@ -94,4 +94,15 @@ public:
 	UPROPERTY()
 	EDragonAbilityType SecondLastUsedAbility = EDragonAbilityType::None;
 
+	//Combat Timing
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Combat")
+	float MinAttackInterval = 2.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Combat")
+	float MaxAttackInterval = 4.0f;
+
+	UPROPERTY()
+	float NextAttackTime = 0.f;
+	bool CanPerformAttack() const;
 };
