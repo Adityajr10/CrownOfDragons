@@ -16,9 +16,9 @@ ADragonAIController::ADragonAIController()
 
 	SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
 
-	SightConfig->SightRadius = 20000.f;
-	SightConfig->LoseSightRadius = 25000.f;
-	SightConfig->PeripheralVisionAngleDegrees = 90.f;
+	SightConfig->SightRadius = 40000.f;
+	SightConfig->LoseSightRadius = 45000.f;
+	SightConfig->PeripheralVisionAngleDegrees = 120.f;
 
 	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
 	SightConfig->DetectionByAffiliation.bDetectFriendlies = true;

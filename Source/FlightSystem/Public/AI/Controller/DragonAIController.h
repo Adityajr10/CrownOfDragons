@@ -50,4 +50,6 @@ public:
 	
 	UFUNCTION()
 	void OnTargetDetected(AActor* Actor, FAIStimulus Stimulus);
+	
+	
 };

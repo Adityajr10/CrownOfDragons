@@ -81,8 +81,25 @@ void UDragonAIBehaviourComponent::UseAbility(const FDragonAbilityData& AbilityDa
 
 void UDragonAIBehaviourComponent::EvaluateSituation()
 {
+	if (!GetWorld())
+	{
+		return;
+	}
 	float CurrentTime = GetWorld()->GetTimeSeconds();
 
+	//Target Memory Update 
+	if (TargetActor)
+	{
+		LastKnownTargetLocation = TargetActor->GetActorLocation();
+		LastSeenTime = CurrentTime;
+	}
+	else
+	{
+		if (CurrentTime - LastSeenTime > TargetMemoryDuration)
+		{
+			LastKnownTargetLocation = FVector::ZeroVector;
+		}
+	}
 	if (CurrentTime >= NextInstinctChangeTime)
 	{
 		SelectInstinct();
@@ -90,9 +107,7 @@ void UDragonAIBehaviourComponent::EvaluateSituation()
 		float Duration = FMath::FRandRange(MinInstinctDuration, MaxInstinctDuration);
 		NextInstinctChangeTime = CurrentTime + Duration;
 	}
-
 	SelectAbility();
-
 	UpdateBlackboard();
 }
 
@@ -290,6 +305,10 @@ void UDragonAIBehaviourComponent::UpdateBlackboard()
 		TEXT("TargetActor"),
 		TargetActor
 	);
+	BlackboardComponent->SetValueAsVector(
+	TEXT("LastKnownTargetLocation"),
+	LastKnownTargetLocation
+);
 }
 
 bool UDragonAIBehaviourComponent::CanPerformAttack() const
@@ -307,4 +326,10 @@ bool UDragonAIBehaviourComponent::CanPerformAttack() const
 void UDragonAIBehaviourComponent::SetTargetActor(AActor* NewTarget)
 {
 	TargetActor = NewTarget;
+
+	if (NewTarget)
+	{
+		LastKnownTargetLocation = NewTarget->GetActorLocation();
+		LastSeenTime = GetWorld()->GetTimeSeconds();
+	}
 }

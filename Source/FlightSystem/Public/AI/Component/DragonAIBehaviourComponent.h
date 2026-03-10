@@ -121,4 +121,14 @@ public:
 	
 	//AiController target set
 	void SetTargetActor(AActor* NewTarget);
+	
+	//Target Memory 
+
+	UPROPERTY()
+	FVector LastKnownTargetLocation;
+
+	UPROPERTY(EditAnywhere, Category="AI")
+	float TargetMemoryDuration = 10.f;
+
+	float LastSeenTime = 0.f;
 };
