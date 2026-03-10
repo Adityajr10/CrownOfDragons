@@ -81,7 +81,15 @@ void UDragonAIBehaviourComponent::UseAbility(const FDragonAbilityData& AbilityDa
 
 void UDragonAIBehaviourComponent::EvaluateSituation()
 {
-	SelectInstinct();
+	float CurrentTime = GetWorld()->GetTimeSeconds();
+
+	if (CurrentTime >= NextInstinctChangeTime)
+	{
+		SelectInstinct();
+
+		float Duration = FMath::FRandRange(MinInstinctDuration, MaxInstinctDuration);
+		NextInstinctChangeTime = CurrentTime + Duration;
+	}
 
 	SelectAbility();
 
@@ -294,4 +302,9 @@ bool UDragonAIBehaviourComponent::CanPerformAttack() const
 	float CurrentTime = GetWorld()->GetTimeSeconds();
 
 	return CurrentTime >= NextAttackTime;
+}
+
+void UDragonAIBehaviourComponent::SetTargetActor(AActor* NewTarget)
+{
+	TargetActor = NewTarget;
 }

@@ -108,4 +108,17 @@ public:
 	UPROPERTY()
 	float NextAttackTime = 0.f;
 	bool CanPerformAttack() const;
+	
+	// Instinct Persistence
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="AI")
+	float MinInstinctDuration = 2.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="AI")
+	float MaxInstinctDuration = 5.0f;
+	
+	float NextInstinctChangeTime = 0.f;
+	
+	//AiController target set
+	void SetTargetActor(AActor* NewTarget);
 };

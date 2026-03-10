@@ -4,6 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Controller.h"
+#include "Perception/AIPerceptionComponent.h"
+#include "Perception/AISenseConfig_Sight.h"
+#include "Perception/AISenseConfig_Hearing.h"
 #include "DragonAIController.generated.h"
 
 
@@ -33,4 +36,18 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AI")
 	UBlackboardComponent* BlackboardComponent;
+	
+public:
+	//Perception
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AI")
+	UAIPerceptionComponent* PerceptionComponent;
+
+	UPROPERTY()
+	UAISenseConfig_Sight* SightConfig;
+
+	UPROPERTY()
+	UAISenseConfig_Hearing* HearingConfig;
+	
+	UFUNCTION()
+	void OnTargetDetected(AActor* Actor, FAIStimulus Stimulus);
 };
