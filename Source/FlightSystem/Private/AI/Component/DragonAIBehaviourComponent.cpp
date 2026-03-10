@@ -12,6 +12,7 @@ void UDragonAIBehaviourComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+	HomeLocation = GetOwner()->GetActorLocation();
 	CurrentEnergy = MaxEnergy;
 
 	OwnerAIController = Cast<AAIController>(GetOwner()->GetInstigatorController());
@@ -87,6 +88,14 @@ void UDragonAIBehaviourComponent::EvaluateSituation()
 	}
 	float CurrentTime = GetWorld()->GetTimeSeconds();
 
+	//Territory Check 
+
+	float DistanceFromHome = GetDistanceFromHome();
+
+	if (DistanceFromHome > MaxChaseDistance)
+	{
+		TargetActor = nullptr;
+	}
 	//Target Memory Update 
 	if (TargetActor)
 	{
@@ -374,4 +383,30 @@ float UDragonAIBehaviourComponent::GetTargetAltitudeDifference() const
 	float TargetZ = TargetActor->GetActorLocation().Z;
 
 	return DragonZ - TargetZ;
+}
+
+FVector UDragonAIBehaviourComponent::PredictTargetLocation(float PredictionTime) const
+{
+	if (!TargetActor)
+	{
+		return FVector::ZeroVector;
+	}
+
+	FVector TargetLocation = TargetActor->GetActorLocation();
+
+	APawn* TargetPawn = Cast<APawn>(TargetActor);
+
+	if (!TargetPawn)
+	{
+		return TargetLocation;
+	}
+
+	FVector Velocity = TargetPawn->GetVelocity();
+
+	return TargetLocation + Velocity * PredictionTime;
+}
+
+float UDragonAIBehaviourComponent::GetDistanceFromHome() const
+{
+	return FVector::Dist(GetOwner()->GetActorLocation(), HomeLocation);
 }
