@@ -122,6 +122,20 @@ void UDragonAIBehaviourComponent::EvaluateSituation()
 
 void UDragonAIBehaviourComponent::SelectInstinct()
 {
+	if (GetDistanceFromHome() > TerritoryRadius)
+	{
+		CurrentInstinct = EDragonInstinct::ReturningHome;
+		CurrentState = EDragonState::Roaming;
+		return;
+	}
+	//Search behavior if target lost but memory exists
+	if (!TargetActor && LastKnownTargetLocation != FVector::ZeroVector)
+	{
+		CurrentInstinct = EDragonInstinct::Searching;
+		CurrentState = EDragonState::Observe;
+		return;
+	}
+
 	float Distance = GetDistanceToTarget();
 
 	float RoamingScore = 0.f;
@@ -203,11 +217,16 @@ void UDragonAIBehaviourComponent::SelectInstinct()
 
 	case EDragonInstinct::Stalking:
 	case EDragonInstinct::Threatening:
+	case EDragonInstinct::Searching: 
 		CurrentState = EDragonState::Observe;
 		break;
 
 	case EDragonInstinct::Attacking:
 		CurrentState = EDragonState::Attack;
+		break;
+		
+	case EDragonInstinct::ReturningHome:
+		CurrentState = EDragonState::Roaming;
 		break;
 
 	case EDragonInstinct::Resting:

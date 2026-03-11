@@ -35,5 +35,8 @@ enum class EDragonInstinct : uint8
 	Stalking    UMETA(DisplayName="Stalking"),
 	Threatening UMETA(DisplayName="Threatening"),
 	Attacking   UMETA(DisplayName="Attacking"),
+	Searching   UMETA(DisplayName="Searching"),
+	ReturningHome UMETA(DisplayName="ReturningHome"),
 	Resting     UMETA(DisplayName="Resting")
+	
 };
