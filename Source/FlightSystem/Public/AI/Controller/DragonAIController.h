@@ -13,7 +13,7 @@
 class UBehaviorTree;
 class UBehaviorTreeComponent;
 class UBlackboardComponent;
-UCLASS()
+UCLASS(Blueprintable)
 class FLIGHTSYSTEM_API ADragonAIController : public AController
 {
 	GENERATED_BODY()

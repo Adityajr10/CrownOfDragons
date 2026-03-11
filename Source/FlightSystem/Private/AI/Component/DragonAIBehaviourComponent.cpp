@@ -5,7 +5,7 @@
 
 UDragonAIBehaviourComponent::UDragonAIBehaviourComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bCanEverTick = true;
 }
 
 void UDragonAIBehaviourComponent::BeginPlay()
@@ -21,6 +21,16 @@ void UDragonAIBehaviourComponent::BeginPlay()
 	{
 		BlackboardComponent = OwnerAIController->GetBlackboardComponent();
 	}
+}
+
+void UDragonAIBehaviourComponent::TickComponent(
+	float DeltaTime,
+	ELevelTick TickType,
+	FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	EvaluateSituation();
 }
 
 bool UDragonAIBehaviourComponent::CanUseAbility(const FDragonAbilityData& AbilityData) const
@@ -207,6 +217,7 @@ void UDragonAIBehaviourComponent::SelectInstinct()
 		BestScore = RestScore;
 		CurrentInstinct = EDragonInstinct::Resting;
 	}
+	UE_LOG(LogTemp, Warning, TEXT("Dragon Instinct: %d"), (int32)CurrentInstinct);
 
 	// Update State
 	switch (CurrentInstinct)
@@ -363,7 +374,14 @@ bool UDragonAIBehaviourComponent::CanPerformAttack() const
 void UDragonAIBehaviourComponent::SetTargetActor(AActor* NewTarget)
 {
 	TargetActor = NewTarget;
-
+	if (NewTarget)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Dragon detected target: %s"), *NewTarget->GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Dragon lost target"));
+	}
 	if (NewTarget)
 	{
 		LastKnownTargetLocation = NewTarget->GetActorLocation();
