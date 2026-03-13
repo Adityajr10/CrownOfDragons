@@ -49,6 +49,8 @@ bool UDragonAIBehaviourComponent::CanUseAbility(const FDragonAbilityData& Abilit
 
 		if (CurrentTime - *LastTime < AbilityData.Cooldown)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("Ability on cooldown: %s"),
+			   *UEnum::GetValueAsString(AbilityData.AbilityType));
 			return false;
 		}
 	}
@@ -130,7 +132,111 @@ void UDragonAIBehaviourComponent::EvaluateSituation()
 	UpdateBlackboard();
 }
 
-void UDragonAIBehaviourComponent::SelectInstinct()
+void UDragonAIBehaviourComponent::SelectInstinct() 
+{
+    // 1. Early exits (Absolute Priorities)
+    if (GetDistanceFromHome() > TerritoryRadius) {
+        CurrentInstinct = EDragonInstinct::ReturningHome;
+        CurrentState = EDragonState::Roaming;
+        return;
+    }
+
+    if (!TargetActor && LastKnownTargetLocation != FVector::ZeroVector) {
+        CurrentInstinct = EDragonInstinct::Searching;
+        CurrentState = EDragonState::Observe;
+        return;
+    }
+	
+	float Distance = GetDistanceToTarget();
+    UE_LOG(LogTemp, Warning, TEXT("Distance: %.2f (Agg=%.2f, Int=%.2f)"), Distance, PersonalitySettings.Aggression, PersonalitySettings.Intelligence);
+
+    float AttackWeight   = 0.f;
+    float ThreatWeight   = 0.f;
+    float StalkingWeight = 0.f;
+    float RoamingWeight  = 0.f;
+
+    if (!TargetActor)
+    {
+        RoamingWeight = 1.0f;
+    }
+    else
+    {
+        // --- ZONE 1: FAR (> 9000) ---
+        if (Distance > 9000.f)
+        {
+            // Force Stalking. Personality only adds flavor, not logic-breaking aggression.
+            StalkingWeight = 5.0f; 
+            AttackWeight   = PersonalitySettings.Aggression * 0.1f; // Tiny chance to snap
+        }
+        // --- ZONE 2: MID (4000 to 9000) ---
+        else if (Distance > 4000.f)
+        {
+            // Personality is the king here.
+            // High Aggression = Attack | High Intelligence = Threaten
+            AttackWeight = PersonalitySettings.Aggression * 4.0f;
+            ThreatWeight = PersonalitySettings.Intelligence * 4.0f;
+        	StalkingWeight = PersonalitySettings.Patience * 3.0f;
+            
+            // Add a base floor so they don't just stand still if stats are 0
+            AttackWeight += 0.5f;
+            ThreatWeight += 0.5f;
+        }
+        // --- ZONE 3: CLOSE (< 4000) ---
+        else
+        {
+            // Close range is mostly attacking.
+            AttackWeight = 5.0f + (PersonalitySettings.Aggression * 2.0f);
+            ThreatWeight = 1.0f + (PersonalitySettings.Intelligence * 2.0f);
+        }
+    }
+
+    // --- WEIGHTED SELECTION ---
+    float TotalWeight = AttackWeight + ThreatWeight + StalkingWeight + RoamingWeight;
+    
+    // Safety check to avoid divide by zero
+    if (TotalWeight <= 0.f) { CurrentInstinct = EDragonInstinct::Roaming; return; }
+
+    float RandomRoll = FMath::FRandRange(0.f, TotalWeight);
+
+    if (RandomRoll < AttackWeight) 
+        CurrentInstinct = EDragonInstinct::Attacking;
+    else if (RandomRoll < (AttackWeight + ThreatWeight)) 
+        CurrentInstinct = EDragonInstinct::Threatening;
+    else if (RandomRoll < (AttackWeight + ThreatWeight + StalkingWeight)) 
+        CurrentInstinct = EDragonInstinct::Stalking;
+    else 
+        CurrentInstinct = EDragonInstinct::Roaming;
+
+    // Debug
+   FString InstinctName = UEnum::GetValueAsString(CurrentInstinct);
+    UE_LOG(LogTemp, Warning, TEXT("Dragon Instinct: %s (Agg=%.2f Int=%.2f)"), *InstinctName,
+           PersonalitySettings.Aggression, PersonalitySettings.Intelligence);
+
+    // Update State
+    switch (CurrentInstinct)
+    {
+    case EDragonInstinct::Roaming:
+    case EDragonInstinct::ReturningHome:
+        CurrentState = EDragonState::Roaming;
+        break;
+
+    case EDragonInstinct::Stalking:
+    case EDragonInstinct::Threatening:
+    case EDragonInstinct::Searching:
+        CurrentState = EDragonState::Observe;
+        break;
+
+    case EDragonInstinct::Attacking:
+        CurrentState = EDragonState::Attack;
+        break;
+
+    case EDragonInstinct::Resting:
+        CurrentState = EDragonState::Rest;
+        break;
+    }
+}
+
+/*void UDragonAIBehaviourComponent::SelectInstinct()
 {
 	if (GetDistanceFromHome() > TerritoryRadius)
 	{
@@ -163,13 +269,14 @@ void UDragonAIBehaviourComponent::SelectInstinct()
 	else
 	{
 		// Distance influence 
-		if (Distance > 6000.f)
+		if (Distance > 8000.f)
 		{
 			StalkingScore += 0.8f;
 		}
-		else if (Distance > 2000.f)
+		else if (Distance > 3000.f)
 		{
 			ThreatScore += 0.7f;
+			AttackScore += 0.3f; // allow attacks at medium range
 		}
 		else
 		{
@@ -189,6 +296,14 @@ void UDragonAIBehaviourComponent::SelectInstinct()
 	{
 		RestScore += 1.0f;
 	}
+	float RandomMin = 0.8f;
+float RandomMax = 1.2f;
+
+RoamingScore  *= FMath::FRandRange(RandomMin, RandomMax);
+StalkingScore *= FMath::FRandRange(RandomMin, RandomMax);
+ThreatScore   *= FMath::FRandRange(RandomMin, RandomMax);
+AttackScore   *= FMath::FRandRange(RandomMin, RandomMax);
+RestScore     *= FMath::FRandRange(RandomMin, RandomMax);
 
 	//Find highest score 
 	float BestScore = RoamingScore;
@@ -217,7 +332,9 @@ void UDragonAIBehaviourComponent::SelectInstinct()
 		BestScore = RestScore;
 		CurrentInstinct = EDragonInstinct::Resting;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("Dragon Instinct: %d"), (int32)CurrentInstinct);
+	FString InstinctName = UEnum::GetValueAsString(CurrentInstinct);
+
+	UE_LOG(LogTemp, Warning, TEXT("Dragon Instinct: %s"), *InstinctName);
 
 	// Update State
 	switch (CurrentInstinct)
@@ -244,10 +361,11 @@ void UDragonAIBehaviourComponent::SelectInstinct()
 		CurrentState = EDragonState::Rest;
 		break;
 	}
-}
+}*/
 
 void UDragonAIBehaviourComponent::SelectAbility()
 {
+	UE_LOG(LogTemp, Warning, TEXT("AbilitySettings Num: %d"), AbilitySettings.Num());
 	if (!TargetActor)
 	{
 		return;
@@ -255,9 +373,10 @@ void UDragonAIBehaviourComponent::SelectAbility()
 
 	if (!CanPerformAttack())
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Your message here"));
 		return;
 	}
-
+	//UE_LOG(LogTemp, Warning, TEXT("Nomral logs"));
 	float DistanceToTarget = GetDistanceToTarget();
 	float AltitudeDiff = GetTargetAltitudeDifference();   // ← ADD HERE
 
@@ -268,11 +387,13 @@ void UDragonAIBehaviourComponent::SelectAbility()
 	{
 		if (Ability.InstinctType != CurrentInstinct)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("Not CurrentInstinct"));
 			continue;
 		}
 
 		if (!CanUseAbility(Ability))
 		{
+			UE_LOG(LogTemp, Warning, TEXT("!CanUseAbility"));
 			continue;
 		}
 
@@ -280,6 +401,7 @@ void UDragonAIBehaviourComponent::SelectAbility()
 		if (DistanceToTarget < Ability.PreferredDistanceMin ||
 			DistanceToTarget > Ability.PreferredDistanceMax)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("DistanceToTarget not valid"));
 			continue;
 		}
 
@@ -287,6 +409,7 @@ void UDragonAIBehaviourComponent::SelectAbility()
 		if (AltitudeDiff < Ability.MinAltitudeDifference ||
 	    AltitudeDiff > Ability.MaxAltitudeDifference)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("AltitudeDiff not valid"));
 			continue;
 		}
 
@@ -312,9 +435,12 @@ void UDragonAIBehaviourComponent::SelectAbility()
 			BestAbility = &Ability;
 		}
 	}
+	
 
 	if (BestAbility)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Selected Ability: %s"),
+		*UEnum::GetValueAsString(BestAbility->AbilityType));
 		UseAbility(*BestAbility);
 	}
 }
