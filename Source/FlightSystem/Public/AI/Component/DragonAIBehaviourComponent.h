@@ -151,4 +151,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Territory")
 	float MaxChaseDistance = 40000.f;
 	float GetDistanceFromHome() const;
+	
+	
+	float NextAbilityDecisionTime = 0.f;
+	float AbilityDecisionInterval = 2.0f;
 };

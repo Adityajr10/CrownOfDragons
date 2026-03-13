@@ -12,7 +12,7 @@ struct FDragonAbilityData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ability")
 	EDragonAbilityType AbilityType = EDragonAbilityType::None;
 	
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ability")
 	EDragonInstinct InstinctType = EDragonInstinct::Attacking;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ability")

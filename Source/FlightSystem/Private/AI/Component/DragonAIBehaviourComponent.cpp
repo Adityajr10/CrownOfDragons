@@ -2,6 +2,7 @@
 
 
 #include "AI/Component/DragonAIBehaviourComponent.h"
+#include "AI/Data/DragonAbilityData.h"
 
 UDragonAIBehaviourComponent::UDragonAIBehaviourComponent()
 {
@@ -37,6 +38,10 @@ bool UDragonAIBehaviourComponent::CanUseAbility(const FDragonAbilityData& Abilit
 {
 	// Check Energy 
 	if (CurrentEnergy < AbilityData.EnergyCost)
+	{
+		return false;
+	}
+	if (AbilityData.AbilityType == EDragonAbilityType::None)
 	{
 		return false;
 	}
@@ -127,8 +132,14 @@ void UDragonAIBehaviourComponent::EvaluateSituation()
 
 		float Duration = FMath::FRandRange(MinInstinctDuration, MaxInstinctDuration);
 		NextInstinctChangeTime = CurrentTime + Duration;
+		/*SelectAbility();*/
 	}
-	SelectAbility();
+	// Ability selection runs independently — whenever attack is ready
+	if (CanPerformAttack())
+	{
+		SelectAbility();
+	}
+
 	UpdateBlackboard();
 }
 
@@ -365,7 +376,15 @@ RestScore     *= FMath::FRandRange(RandomMin, RandomMax);
 
 void UDragonAIBehaviourComponent::SelectAbility()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AbilitySettings Num: %d"), AbilitySettings.Num());
+	float CurrentTime = GetWorld()->GetTimeSeconds();
+
+	if (CurrentTime < NextAbilityDecisionTime)
+	{
+		return;
+	}
+
+	NextAbilityDecisionTime = CurrentTime + AbilityDecisionInterval;
+	
 	if (!TargetActor)
 	{
 		return;
@@ -373,10 +392,9 @@ void UDragonAIBehaviourComponent::SelectAbility()
 
 	if (!CanPerformAttack())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Your message here"));
+		//UE_LOG(LogTemp, Warning, TEXT("Your message here"));
 		return;
 	}
-	//UE_LOG(LogTemp, Warning, TEXT("Nomral logs"));
 	float DistanceToTarget = GetDistanceToTarget();
 	float AltitudeDiff = GetTargetAltitudeDifference();   // ← ADD HERE
 
@@ -385,15 +403,23 @@ void UDragonAIBehaviourComponent::SelectAbility()
 
 	for (const FDragonAbilityData& Ability : AbilitySettings)
 	{
+		if (Ability.AbilityType == EDragonAbilityType::None)
+		{
+			continue;
+		}
+		/*UE_LOG(LogTemp, Warning, TEXT("Ability %s Instinct: %s | CurrentInstinct: %s"),
+	*UEnum::GetValueAsString(Ability.AbilityType),
+	*UEnum::GetValueAsString(Ability.InstinctType),
+	*UEnum::GetValueAsString(CurrentInstinct));*/
 		if (Ability.InstinctType != CurrentInstinct)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Not CurrentInstinct"));
+			//UE_LOG(LogTemp, Warning, TEXT("Not CurrentInstinct"));
 			continue;
 		}
 
 		if (!CanUseAbility(Ability))
 		{
-			UE_LOG(LogTemp, Warning, TEXT("!CanUseAbility"));
+		//	UE_LOG(LogTemp, Warning, TEXT("!CanUseAbility"));
 			continue;
 		}
 
@@ -401,7 +427,7 @@ void UDragonAIBehaviourComponent::SelectAbility()
 		if (DistanceToTarget < Ability.PreferredDistanceMin ||
 			DistanceToTarget > Ability.PreferredDistanceMax)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("DistanceToTarget not valid"));
+		//	UE_LOG(LogTemp, Warning, TEXT("DistanceToTarget not valid"));
 			continue;
 		}
 
@@ -409,7 +435,7 @@ void UDragonAIBehaviourComponent::SelectAbility()
 		if (AltitudeDiff < Ability.MinAltitudeDifference ||
 	    AltitudeDiff > Ability.MaxAltitudeDifference)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("AltitudeDiff not valid"));
+			//UE_LOG(LogTemp, Warning, TEXT("AltitudeDiff not valid"));
 			continue;
 		}
 
