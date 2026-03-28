@@ -9,6 +9,7 @@ void UDragonAbility_DiveBomb::Start(ADragonBaseAI* InOwner, AActor* InTarget)
 {
 	Super::Start(InOwner, InTarget);
 
+	AbilityType = EDragonAbilityType::DiveBomb;
 	if (!OwnerDragon || !TargetActor)
 	{
 		bFinished = true;
@@ -65,4 +66,10 @@ void UDragonAbility_DiveBomb::Tick(float DeltaTime)
 
 		bFinished = true;
 	}
+}
+
+
+bool UDragonAbility_DiveBomb::IsFinished() const
+{
+	return bFinished;
 }
