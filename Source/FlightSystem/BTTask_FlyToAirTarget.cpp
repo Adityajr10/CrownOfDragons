@@ -29,6 +29,7 @@ EBTNodeResult::Type UBTTask_FlyToAirTarget::ExecuteTask(
 
 	ADragonBaseAI* Dragon =
 		Cast<ADragonBaseAI>(AI->GetPawn());
+	Dragon->EnableFlyingMode();
 
 	if (!Dragon) return EBTNodeResult::Failed;
 
@@ -40,6 +41,19 @@ EBTNodeResult::Type UBTTask_FlyToAirTarget::ExecuteTask(
 
 	UDragonAbility* Ability =
 		NewObject<UDragonAbility>(Dragon, AbilityClass);
+	
+	//new added
+	const FVector Start = Dragon->StartLocation;
+
+	UDragonFlightComponent* Flight = Dragon->FindComponentByClass<UDragonFlightComponent>();
+	if (!Flight) return EBTNodeResult::Failed;
+	
+	FVector RandomPoint;
+	RandomPoint.X = FMath::FRandRange(Start.X - 20000.f, Start.X + 20000.f);
+	RandomPoint.Y = FMath::FRandRange(Start.Y - 20000.f, Start.Y + 20000.f);
+	RandomPoint.Z = FMath::FRandRange(Start.Z, Start.Z + 10000.f);
+
+	Flight->SetAirTarget(RandomPoint);
 
 	AbilityComp->StartAbility(Ability, nullptr);
 
