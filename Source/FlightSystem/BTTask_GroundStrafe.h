@@ -28,5 +28,5 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<UDragonAbility> AbilityClass;
-	virtual uint16 GetInstanceMemorySize() const override;
+	//virtual uint16 GetInstanceMemorySize() const override;
 };
