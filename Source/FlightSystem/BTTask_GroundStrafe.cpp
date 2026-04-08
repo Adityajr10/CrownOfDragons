@@ -1,26 +1,11 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "BTTask_GroundStrafe.h"
 
 #include "AIController.h"
 #include "DragonBaseAI.h"
 #include "AI/Component/DragonAbilityComponent.h"
 #include "AI/Ability/DragonAbility.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 
-struct FStrafeMemory
-{
-    FVector Start;
-    FVector End;
-    bool bFinished = false;
-};
-
-uint16 UBTTask_GroundStrafe::GetInstanceMemorySize() const
-{
-    return sizeof(FStrafeMemory);
-}
 UBTTask_GroundStrafe::UBTTask_GroundStrafe()
 {
     NodeName = "Ground Strafe";
