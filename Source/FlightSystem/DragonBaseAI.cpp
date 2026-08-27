@@ -1,34 +1,32 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "DragonBaseAI.h"
 #include "DragonFlightComponent.h"
 #include "AI/Component/DragonAbilityComponent.h"
+#include "AI/Component/DragonStimulusComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 ADragonBaseAI::ADragonBaseAI()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	// Add flight brain
 	FlightComponent = CreateDefaultSubobject<UDragonFlightComponent>(TEXT("FlightComponent"));
 	FireBreath = CreateDefaultSubobject<UDragonFireBreathComponent>(TEXT("FireBreath"));
 	AbilityComponent = CreateDefaultSubobject<UDragonAbilityComponent>(TEXT("AbilityComponent"));
 
+	// NEW: Create stimulus component
+	StimulusComponent = CreateDefaultSubobject<UDragonStimulusComponent>(TEXT("StimulusComponent"));
 
-	// Base flight setup
-//	GetCharacterMovement()->SetMovementMode(MOVE_Flying);
-//	GetCharacterMovement()->GravityScale = 0.f;
-	//GetCharacterMovement()->MaxFlySpeed = 1500.f;
-	//GetCharacterMovement()->BrakingDecelerationFlying = 200.f;
-
-	// bUseControllerRotationYaw = false;
+	GetMesh()->SetGenerateOverlapEvents(true);
 }
 
 void ADragonBaseAI::BeginPlay()
 {
 	Super::BeginPlay();
-	StartLocation = GetActorLocation(); 
+	StartLocation = GetActorLocation();
+
+	CurrentHealth = MaxHealth;
+
+	GetMesh()->OnComponentBeginOverlap.AddDynamic(this, &ADragonBaseAI::OnOverlapBegin);
 }
 
 void ADragonBaseAI::TakeoffFromPerch()
@@ -42,7 +40,6 @@ void ADragonBaseAI::TakeoffFromPerch()
 	LaunchCharacter(UpBoost, true, true);
 }
 
-//PERCH DIVE-BOMB SYSTEM
 void ADragonBaseAI::StartDiveBomb(AActor* Target)
 {
 	if (!Target) return;
@@ -67,7 +64,74 @@ void ADragonBaseAI::OnDiveImpact()
 {
 	if (DiveEndMontage)
 		PlayAnimMontage(DiveEndMontage);
-
-	// TODO: apply damage, knockback, explosion FX here
 }
 
+void ADragonBaseAI::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+	bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (!OtherActor) return;
+
+	ACharacter* OtherCharacter = Cast<ACharacter>(OtherActor);
+	if (!OtherCharacter) return;
+
+	APlayerController* PC = Cast<APlayerController>(OtherCharacter->GetController());
+	if (!PC) return;
+
+	float CurrentTime = GetWorld()->GetTimeSeconds();
+	if (CurrentTime - LastDamageTime < DamageCooldown) return;
+
+	LastDamageTime = CurrentTime;
+
+	//float DamageAmount = 5.f;
+	float DamageAmount = 0.f;
+	CurrentHealth -= DamageAmount;
+	CurrentHealth = FMath::Clamp(CurrentHealth, 0.f, MaxHealth);
+
+	UE_LOG(LogTemp, Warning, TEXT("Dragon health: %.1f / %.1f"), CurrentHealth, MaxHealth);
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			-1,                      // Key (-1 = always new message)
+			2.0f,                    // Time to display (seconds)
+			FColor::Green,           // Text color
+			FString::Printf(TEXT("Dragon Health: %.1f / %.1f"), CurrentHealth, MaxHealth)
+		);
+	}
+	// NEW: Report damage to stimulus component
+	if (StimulusComponent)
+	{
+		StimulusComponent->ReportDamage(DamageAmount, OtherActor);
+	}
+}
+
+
+void ADragonBaseAI::IncreaseHealth()
+{
+	// Start timer for 20 seconds
+	GetWorldTimerManager().SetTimer(
+		HealthTimerHandle,
+		this,
+		&ADragonBaseAI::HealthModification,
+		120.0f,
+		false
+	);
+}
+
+void ADragonBaseAI::HealthModification()
+{
+	// Modify health (example: increase by 20)
+	CurrentHealth += 60.0f;
+
+	UE_LOG(LogTemp, Warning, TEXT("Health increased to: %f"), CurrentHealth);
+	// Display on screen
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			-1,                     // Key (-1 = new message)
+			5.0f,                  // Time in seconds
+			FColor::Green,        // Color
+			FString::Printf(TEXT("Dragon Health: %.1f"), CurrentHealth)
+		);
+	}
+}

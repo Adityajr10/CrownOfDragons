@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -9,6 +7,7 @@
 #include "DragonBaseAI.generated.h"
 
 class UDragonAbilityComponent;
+class UDragonStimulusComponent;
 
 UCLASS()
 class FLIGHTSYSTEM_API ADragonBaseAI : public ACharacter
@@ -16,28 +15,32 @@ class FLIGHTSYSTEM_API ADragonBaseAI : public ACharacter
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
-public:
 	ADragonBaseAI();
-
 
 protected:
 	virtual void BeginPlay() override;
-	
 
 public:
 	void TakeoffFromPerch();
 	void StartDiveBomb(AActor* Target);
 	void OnDiveImpact();
-	// Plug-in flight brain
+
+	// ---- Components ----
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UDragonFlightComponent* FlightComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UDragonFireBreathComponent* FireBreath;
-	
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dragon|Ability")
 	UDragonAbilityComponent* AbilityComponent;
+
+	// NEW: Stimulus component
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dragon|AI")
+	UDragonStimulusComponent* StimulusComponent;
+
+	// ---- State ----
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool IsFlying;
@@ -48,19 +51,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FVector StartLocation;
 
+	// ---- Patrol ----
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Flight|Patrol")
 	float CircleRadius = 12000.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Flight|Patrol")
-	float CircleHeightMin = 3000.f;
+	float CircleHeightMin = 2000.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Flight|Patrol")
-	float CircleHeightMax = 7000.f;
+	float CircleHeightMax = 3000.f;
 
 	float CircleAngle = 0.f;
 
+	// ---- Perch ----
 
-	//Perch & Watch (Intimidation Mode)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Perch")
 	float PerchHeightOffset = 200.f;
 
@@ -81,7 +86,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Perch")
 	float PerchWatchTime = 6.f;
 
-	//PERCH DIVE-BOMB SYSTEM
+	// ---- DiveBomb ----
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="DiveBomb")
 	float DiveHeight = 9000.f;
@@ -99,7 +104,8 @@ public:
 	bool bIsClimbing = false;
 	bool bIsDiving = false;
 
-	//GroundStrafe
+	// ---- Strafe ----
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Strafe")
 	float StrafeHeight = 400.f;
 
@@ -111,4 +117,40 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Strafe")
 	UAnimMontage* StrafeMontage;
+
+	// ---- Blueprint events ----
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void EnableFlyingMode();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void DisableFlyingMode();
+
+	// ---- Health ----
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Health")
+	float MaxHealth = 100.f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Health")
+	float CurrentHealth = 100.f;
+
+	UFUNCTION()
+	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+		bool bFromSweep, const FHitResult& SweepResult);
+
+	float LastDamageTime = 0.f;
+
+	UPROPERTY(EditAnywhere, Category="Health")
+	float DamageCooldown = 1.0f;
+	
+	
+	UFUNCTION(BlueprintCallable)
+	void IncreaseHealth();
+
+	UFUNCTION()
+	void HealthModification();
+	
+	
+	FTimerHandle HealthTimerHandle;
 };
