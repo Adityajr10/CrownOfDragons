@@ -1,85 +1,83 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "AI/Ability/DragonAbility_GroundStrafe.h"
-#include "AI/Ability/DragonAbility_GroundStrafe.h"
-#include "GameFramework/CharacterMovementComponent.h"
-#include "AI/AbilityActor/DragonStrafeFireActor.h"
 
 void UDragonAbility_GroundStrafe::Start(ADragonBaseAI* InOwner, AActor* InTarget)
 {
-	Super::Start(InOwner, InTarget);
+    Super::Start(InOwner, InTarget);
+    AbilityType = EDragonAbilityType::GroundStrafe;
+    StrafeTimer = 0.f;
 
-	if (!OwnerDragon || !TargetActor)
-	{
-		bFinished = true;
-		return;
-	}
+    if (!OwnerDragon) return;
 
-	FVector Dir = OwnerDragon->GetActorForwardVector();
+    FVector DragonLoc = OwnerDragon->GetActorLocation();
 
-	FVector GroundStart = TargetActor->GetActorLocation();
-	GroundStart.Z += OwnerDragon->StrafeHeight;
+    if (TargetActor)
+    {
+        FVector PlayerLoc = TargetActor->GetActorLocation();
 
-	Start1 = GroundStart;
-	End = GroundStart + Dir * OwnerDragon->StrafeDistance;
+        // Pick a random angle AROUND the player (full 360)
+        // The point is at StrafeRadius distance FROM the player
+        // so the dragon circles around at a safe distance
+        float RandomAngle = FMath::FRandRange(0.f, 360.f);
+        FVector RandomDir = FVector(
+            FMath::Cos(FMath::DegreesToRadians(RandomAngle)),
+            FMath::Sin(FMath::DegreesToRadians(RandomAngle)),
+            0.f
+        );
 
-	OwnerDragon->SetActorLocation(Start1);
-	OwnerDragon->SetActorRotation(Dir.Rotation());
+        float RandomDist = FMath::FRandRange(StrafeRadiusMin, StrafeRadiusMax);
 
-	MoveDir = (End - Start1).GetSafeNormal();
+        // Point is AROUND the player, not near the player
+        StrafeLocation = PlayerLoc + RandomDir * RandomDist;
 
-	if (OwnerDragon->StrafeMontage)
-		OwnerDragon->PlayAnimMontage(OwnerDragon->StrafeMontage);
+        // Low altitude — close to player height but not on the ground
+        StrafeLocation.Z = PlayerLoc.Z + FMath::FRandRange(LowHeightMin, LowHeightMax);
+    }
+    else
+    {
+        float RandomAngle = FMath::FRandRange(0.f, 360.f);
+        FVector RandomDir = FVector(
+            FMath::Cos(FMath::DegreesToRadians(RandomAngle)),
+            FMath::Sin(FMath::DegreesToRadians(RandomAngle)),
+            0.f
+        );
 
-	UWorld* World = OwnerDragon->GetWorld();
+        float RandomDist = FMath::FRandRange(StrafeRadiusMin, StrafeRadiusMax);
+        StrafeLocation = DragonLoc + RandomDir * RandomDist;
+        StrafeLocation.Z = DragonLoc.Z + FMath::FRandRange(-100.f, 100.f);
+    }
 
-	if (World && StrafeFireClass)
-	{
-		FVector SpawnLoc =
-			OwnerDragon->GetMesh()->GetSocketLocation("Tongue");
-
-		FireActor = World->SpawnActor<ADragonStrafeFireActor>(
-			StrafeFireClass,
-			SpawnLoc,
-			OwnerDragon->GetActorRotation()
-		);
-
-		if (FireActor)
-		{
-			FireActor->AttachToActor(
-				OwnerDragon,
-				FAttachmentTransformRules::KeepWorldTransform
-			);
-		}
-	}
-
-	bStarted = true;
+    UE_LOG(LogTemp, Log, TEXT("GroundStrafe: target location (%.0f, %.0f, %.0f) dist from player=%.0f"),
+        StrafeLocation.X, StrafeLocation.Y, StrafeLocation.Z,
+        TargetActor ? FVector::Dist(StrafeLocation, TargetActor->GetActorLocation()) : 0.f);
 }
-
 
 void UDragonAbility_GroundStrafe::Tick(float DeltaTime)
 {
-	if (!OwnerDragon || !bStarted) return;
+    if (!OwnerDragon) return;
 
-	OwnerDragon->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+    UDragonFlightComponent* Flight =
+        OwnerDragon->FindComponentByClass<UDragonFlightComponent>();
 
-	OwnerDragon->GetCharacterMovement()->Velocity =
-		MoveDir * OwnerDragon->StrafeSpeed;
+    if (!Flight) return;
 
-	OwnerDragon->SetActorRotation(MoveDir.Rotation());
+    StrafeTimer += DeltaTime;
 
-	if (FVector::Dist(
-		OwnerDragon->GetActorLocation(),
-		End) < 300.f)
-	{
-		OwnerDragon->GetCharacterMovement()->StopMovementImmediately();
+    Flight->SetAirTarget(StrafeLocation);
 
-		if (FireActor)
-		{
-			FireActor->StopFire();
-		}
+    // Only finish after minimum duration AND close enough
+    if (StrafeTimer >= MinStrafeDuration)
+    {
+        float Dist = FVector::Dist(
+            OwnerDragon->GetActorLocation(), StrafeLocation);
 
-		bFinished = true;
-	}
+        if (Dist < 300.f)
+        {
+            bFinished = true;
+        }
+    }
+}
+
+bool UDragonAbility_GroundStrafe::IsFinished() const
+{
+    return bFinished;
 }
