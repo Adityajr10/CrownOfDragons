@@ -6,6 +6,7 @@
 void UDragonAbility_FlyToAirTarget::Start(ADragonBaseAI* InOwner, AActor* InTarget)
 {
 	Super::Start(InOwner, InTarget);
+	UE_LOG(LogTemp, Log,     TEXT("FlyToAirTarget"));
 
 	if (!OwnerDragon)
 	{
@@ -34,4 +35,9 @@ void UDragonAbility_FlyToAirTarget::Tick(float DeltaTime)
 	{
 		bFinished = true;
 	}
+}
+
+bool UDragonAbility_FlyToAirTarget::IsFinished() const
+{
+	return bFinished;
 }

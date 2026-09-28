@@ -42,6 +42,12 @@ protected:
 	float GustDuration = 0.5f;
 
 	float LifeTimer = 0.f;
-
+	float LifeDuration = 4.f;
 	void ApplyPush();
+	
+	FVector TargetLocation;
+public:
+	void Init(const FVector& InTarget);
+	UPROPERTY(EditDefaultsOnly, Category="WingGust")
+	float Speed = 2000.f;
 };

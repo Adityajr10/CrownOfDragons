@@ -1,51 +1,153 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿#include "AI/Ability/DragonAbility_ThermalGlide.h"
 
-
-#include "AI/Ability/DragonAbility_ThermalGlide.h"
 void UDragonAbility_ThermalGlide::Start(
-	ADragonBaseAI* InOwner,
-	AActor* InTarget)
+    ADragonBaseAI* InOwner,
+    AActor* InTarget)
 {
-	Super::Start(InOwner, InTarget);
+    Super::Start(InOwner, InTarget);
+    AbilityType = EDragonAbilityType::ThermalGlide;
+    AbilityTimer = 0.f;
+    BankTimer    = 0.f;
+    bFinished    = false;
 
-	AbilityTimer = 0.f;
+    if (!OwnerDragon) return;
 
-	if (!OwnerDragon) return;
+    StartAltitude = OwnerDragon->GetActorLocation().Z;
+    CurrentYaw    = OwnerDragon->GetActorRotation().Yaw;
 
-	FVector Forward = OwnerDragon->GetActorForwardVector();
+    NextBankInterval = FMath::FRandRange(BankIntervalMin, BankIntervalMax);
 
-	FVector StartLoc = OwnerDragon->GetActorLocation();
-
-	GlideTarget = StartLoc + Forward * GlideDistance;
-	GlideTarget.Z = GlideHeight;
+    CurrentDirection = EGlideDirection::Forward;
+    PlayCurrentMontage();
 }
 
 void UDragonAbility_ThermalGlide::Tick(float DeltaTime)
 {
-	if (!OwnerDragon) return;
+    if (!OwnerDragon) return;
 
-	UDragonFlightComponent* Flight =
-		OwnerDragon->FindComponentByClass<UDragonFlightComponent>();
+    UDragonFlightComponent* Flight =
+        OwnerDragon->FindComponentByClass<UDragonFlightComponent>();
 
-	if (!Flight) return;
+    if (!Flight) return;
 
-	AbilityTimer += DeltaTime;
+    AbilityTimer += DeltaTime;
+    BankTimer    += DeltaTime;
 
-	/* Glide forward */
-	Flight->SetAirTarget(GlideTarget);
+    if (CurrentDirection == EGlideDirection::Left)
+    {
+        CurrentYaw -= BankTurnRate * DeltaTime;
+    }
+    else if (CurrentDirection == EGlideDirection::Right)
+    {
+        CurrentYaw += BankTurnRate * DeltaTime;
+    }
 
-	/* Maintain altitude */
-	FVector Current = OwnerDragon->GetActorLocation();
-	Current.Z = GlideHeight;
-	OwnerDragon->SetActorLocation(Current);
+    if (BankTimer >= NextBankInterval)
+    {
+        BankTimer = 0.f;
+        NextBankInterval = FMath::FRandRange(BankIntervalMin, BankIntervalMax);
+        PickNewDirection();
+        PlayCurrentMontage();
+    }
 
-	if (AbilityTimer > GlideDuration)
-	{
-		bFinished = true;
-	}
+    UAnimMontage* ActiveMontage = nullptr;
+
+    if (CurrentDirection == EGlideDirection::Forward)
+        ActiveMontage = GlideForwardMontage;
+    else if (CurrentDirection == EGlideDirection::Left)
+        ActiveMontage = GlideLeftMontage;
+    else if (CurrentDirection == EGlideDirection::Right)
+        ActiveMontage = GlideRightMontage;
+
+    if (ActiveMontage)
+    {
+        UAnimInstance* Anim = OwnerDragon->GetMesh()->GetAnimInstance();
+
+        if (Anim && !Anim->Montage_IsPlaying(ActiveMontage))
+        {
+            OwnerDragon->PlayAnimMontage(ActiveMontage);
+        }
+    }
+
+    FVector Forward = FVector(
+        FMath::Cos(FMath::DegreesToRadians(CurrentYaw)),
+        FMath::Sin(FMath::DegreesToRadians(CurrentYaw)),
+        0.f
+    );
+
+    FVector DragonLoc = OwnerDragon->GetActorLocation();
+    FVector GlideTarget = DragonLoc + Forward * GlideLeadDistance;
+
+    GlideTarget.Z = StartAltitude +
+                    AltitudeDriftAmplitude *
+                    FMath::Sin(AbilityTimer * AltitudeDriftSpeed);
+
+    Flight->SetAirTarget(GlideTarget);
+
+    if (AbilityTimer >= GlideDuration)
+    {
+        if (ActiveMontage)
+            OwnerDragon->StopAnimMontage(ActiveMontage);
+
+        bFinished = true;
+    }
+}
+
+void UDragonAbility_ThermalGlide::PickNewDirection()
+{
+    int32 Roll = FMath::RandRange(0, 3);
+
+    if (Roll == 0)
+        CurrentDirection = EGlideDirection::Left;
+    else if (Roll == 1)
+        CurrentDirection = EGlideDirection::Right;
+    else
+        CurrentDirection = EGlideDirection::Forward;
+}
+
+void UDragonAbility_ThermalGlide::PlayCurrentMontage()
+{
+    UAnimMontage* Montage = nullptr;
+
+    if (CurrentDirection == EGlideDirection::Forward)
+        Montage = GlideForwardMontage;
+    else if (CurrentDirection == EGlideDirection::Left)
+        Montage = GlideLeftMontage;
+    else if (CurrentDirection == EGlideDirection::Right)
+        Montage = GlideRightMontage;
+
+    if (Montage)
+        OwnerDragon->PlayAnimMontage(Montage);
 }
 
 bool UDragonAbility_ThermalGlide::IsFinished() const
 {
-	return bFinished;
+    return bFinished;
+}
+
+// Always interruptible — just gentle flying, no commitment at all
+bool UDragonAbility_ThermalGlide::CanBeInterrupted() const
+{
+    return true;
+}
+
+void UDragonAbility_ThermalGlide::Abort(EDragonInterruptReason Reason)
+{
+    // Stop whichever glide montage is currently playing
+    if (OwnerDragon)
+    {
+        UAnimMontage* ActiveMontage = nullptr;
+
+        if (CurrentDirection == EGlideDirection::Forward)
+            ActiveMontage = GlideForwardMontage;
+        else if (CurrentDirection == EGlideDirection::Left)
+            ActiveMontage = GlideLeftMontage;
+        else if (CurrentDirection == EGlideDirection::Right)
+            ActiveMontage = GlideRightMontage;
+
+        if (ActiveMontage)
+            OwnerDragon->StopAnimMontage(ActiveMontage);
+    }
+
+    Super::Abort(Reason);
 }

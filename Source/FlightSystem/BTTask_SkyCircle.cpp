@@ -7,6 +7,7 @@
 #include "AIController.h"
 #include "AI/Ability/DragonAbility_SkyCircle.h"
 #include "AI/Component/DragonAbilityComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 UBTTask_SkyCircle::UBTTask_SkyCircle()
 {
@@ -36,7 +37,8 @@ EBTNodeResult::Type UBTTask_SkyCircle::ExecuteTask(
 	UDragonAbility* Ability =
 	NewObject<UDragonAbility>(Dragon, AbilityClass);
 
-	AbilityComp->StartAbility(Ability, nullptr);
+	AActor* Player = UGameplayStatics::GetPlayerPawn(Dragon, 0);
+	AbilityComp->StartAbility(Ability, Player);
 
 	return EBTNodeResult::InProgress;
 }

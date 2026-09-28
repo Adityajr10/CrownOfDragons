@@ -15,6 +15,8 @@ public:
 	virtual void Start(ADragonBaseAI* InOwner, AActor* InTarget) override;
 	virtual void Tick(float DeltaTime) override;
 	virtual bool IsFinished() const override;
+	virtual bool CanBeInterrupted() const override;
+	virtual void Abort(EDragonInterruptReason Reason) override;
 
 protected:
 

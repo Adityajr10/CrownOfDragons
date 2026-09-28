@@ -1,67 +1,104 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "AI/Ability/DragonAbility_WingGust.h"
-#include "AI/Ability/DragonAbility_WingGust.h"
+﻿#include "AI/Ability/DragonAbility_WingGust.h"
 #include "AI/AbilityActor/DragonWingGustActor.h"
-
-void UDragonAbility_WingGust::SetGustMode(EWingGustMode InMode)
-{
-	GustMode = InMode;
-}
 
 void UDragonAbility_WingGust::Start(ADragonBaseAI* InOwner, AActor* InTarget)
 {
 	Super::Start(InOwner, InTarget);
-
-	bExecuted = false;
-
-	if (OwnerDragon && WingGustMontage)
-	{
-		OwnerDragon->PlayAnimMontage(WingGustMontage);
-	}
+	AbilityType = EDragonAbilityType::WingGust;
+	bMontageStarted = false;
+	bSpawned = false;
+	bFinished = false;
+	Timer = 0.f;
 }
 
 void UDragonAbility_WingGust::Tick(float DeltaTime)
 {
-	if (!OwnerDragon) return;
+	if (!OwnerDragon || !TargetActor) return;
 
-	if (!bExecuted)
+	UDragonFlightComponent* Flight =
+		OwnerDragon->FindComponentByClass<UDragonFlightComponent>();
+
+	if (!Flight) return;
+
+	FVector DragonLoc = OwnerDragon->GetActorLocation();
+	FVector PlayerLoc = TargetActor->GetActorLocation();
+
+	float Dist = FVector::Dist(DragonLoc, PlayerLoc);
+
+	/* Move toward player */
+
+	if (!bMontageStarted && Dist > AttackDistance)
 	{
-		bExecuted = true;
+		Flight->SetAirTarget(PlayerLoc);
+		return;
+	}
 
-		if (!WingGustActorClass) 
+	/* Start montage */
+	/* Start montage but keep movement */
+
+	if (!bMontageStarted)
+	{
+		bMontageStarted = true;
+
+		if (WingGustMontage)
 		{
-			bFinished = true;
-			return;
+			OwnerDragon->PlayAnimMontage(WingGustMontage);
 		}
+	}
+
+	/* Keep flying forward while montage plays */
+
+	FVector DragonLoc1 = OwnerDragon->GetActorLocation();
+	FVector Forward = OwnerDragon->GetActorForwardVector();
+
+	FVector MoveTarget =
+		DragonLoc1 + Forward * 800.f;
+
+	Flight->SetAirTarget(MoveTarget);
+
+	/* Wait delay before spawning gust */
+
+	Timer += DeltaTime;
+
+	if (!bSpawned && Timer >= SpawnDelay)
+	{
+		bSpawned = true;
+
+		if (!WingGustActorClass) return;
 
 		FVector SpawnLoc = OwnerDragon->GetActorLocation();
 
-		// If gust is used in air spawn slightly below dragon
-		if (GustMode == EWingGustMode::Air)
-		{
-			SpawnLoc.Z -= 200.f;
-		}
+		FVector TargetLoc =
+			SpawnLoc + OwnerDragon->GetActorForwardVector() * GustDistance;
 
 		UWorld* World = OwnerDragon->GetWorld();
-		if (!World)
+
+		if (!World) return;
+
+		ADragonWingGustActor* Gust =
+			World->SpawnActor<ADragonWingGustActor>(
+				WingGustActorClass,
+				SpawnLoc,
+				OwnerDragon->GetActorRotation()
+			);
+
+		if (Gust)
 		{
-			bFinished = true;
-			return;
+			Gust->Init(TargetLoc);
 		}
+	}
 
-		World->SpawnActor<ADragonWingGustActor>(
-			WingGustActorClass,
-			SpawnLoc,
-			OwnerDragon->GetActorRotation()
-		);
+	/* Finish ability */
 
+	if (bSpawned)
+	{
 		bFinished = true;
 	}
 }
 
 bool UDragonAbility_WingGust::IsFinished() const
 {
+	//UE_LOG(LogTemp, Log,     TEXT("WingGustFinish!"));
 	return bFinished;
+	
 }

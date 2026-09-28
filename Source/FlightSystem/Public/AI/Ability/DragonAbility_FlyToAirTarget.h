@@ -15,6 +15,7 @@ class FLIGHTSYSTEM_API UDragonAbility_FlyToAirTarget : public UDragonAbility
 	GENERATED_BODY()
 	virtual void Start(ADragonBaseAI* InOwner, AActor* InTarget) override;
 	virtual void Tick(float DeltaTime) override;
+	virtual bool IsFinished() const override;
 
 private:
 

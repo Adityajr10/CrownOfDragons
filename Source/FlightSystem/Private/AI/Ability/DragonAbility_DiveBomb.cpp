@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "AI/Ability/DragonAbility_DiveBomb.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -29,7 +26,7 @@ void UDragonAbility_DiveBomb::Tick(float DeltaTime)
 {
 	if (!OwnerDragon || !TargetActor) return;
 
-	// PHASE 1: reach crest
+	// PHASE 1: reach crest (climbing)
 	if (!bReachedTop)
 	{
 		if (OwnerDragon->GetVelocity().Z < 50.f)
@@ -68,8 +65,36 @@ void UDragonAbility_DiveBomb::Tick(float DeltaTime)
 	}
 }
 
-
 bool UDragonAbility_DiveBomb::IsFinished() const
 {
 	return bFinished;
+}
+
+// Phase 1 (climbing up): YES — can abort before committing to the dive
+// Phase 2 (diving down): NO — mid-dive, can't pull out
+bool UDragonAbility_DiveBomb::CanBeInterrupted() const
+{
+	return !bReachedTop;
+}
+
+void UDragonAbility_DiveBomb::Abort(EDragonInterruptReason Reason)
+{
+	if (OwnerDragon)
+	{
+		// If aborted during dive (force-interrupt via health), re-enable movement
+		// so the dragon doesn't stay frozen with movement disabled
+		if (bReachedTop)
+		{
+			OwnerDragon->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+			UE_LOG(LogTemp, Log, TEXT("DiveBomb: force-aborted during dive — re-enabled movement"));
+		}
+		else
+		{
+			// Aborted during climb — stop the launch velocity
+			OwnerDragon->GetCharacterMovement()->StopMovementImmediately();
+			UE_LOG(LogTemp, Log, TEXT("DiveBomb: aborted during climb"));
+		}
+	}
+
+	Super::Abort(Reason);
 }

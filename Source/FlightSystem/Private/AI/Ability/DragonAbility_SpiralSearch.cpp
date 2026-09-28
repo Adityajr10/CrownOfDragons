@@ -3,7 +3,7 @@
 void UDragonAbility_SpiralSearch::SetSearchLocation(const FVector& InLocation)
 {
    // SearchLocation = InLocation;
-    SearchLocation = FVector(61613.709893, 3459.903335, 7779.841142);
+    SearchLocation= FVector(36988.972731, 22267.368020, 7439.448210);
 }
 
 void UDragonAbility_SpiralSearch::Start(
@@ -11,13 +11,14 @@ void UDragonAbility_SpiralSearch::Start(
     AActor* InTarget)
 {
     Super::Start(InOwner, InTarget);
-
+    AbilityType = EDragonAbilityType::SpiralSearch;
     bReachedSearchArea = false;
     bFinished          = false;
     CurrentRadius      = InitialRadius;
     Angle              = 0.f;
     AbilityTimer       = 0.f;
 }
+
 void UDragonAbility_SpiralSearch::Tick(float DeltaTime)
 {
     if (!OwnerDragon) return;
@@ -29,9 +30,7 @@ void UDragonAbility_SpiralSearch::Tick(float DeltaTime)
 
     FVector DragonLoc = OwnerDragon->GetActorLocation();
 
-    /* ─────────────────────────────────────────────────────────────
-       Phase 1 — Fly to search location
-    ───────────────────────────────────────────────────────────── */
+    /* Phase 1 — Fly to search location */
     if (!bReachedSearchArea)
     {
         FVector AboveSearch = SearchLocation;
@@ -51,16 +50,9 @@ void UDragonAbility_SpiralSearch::Tick(float DeltaTime)
         return;
     }
 
-    /* ─────────────────────────────────────────────────────────────
-       Phase 2 — Spiral outward
-       Only advance angle and grow radius when dragon is close
-       to the current spiral target — this way the dragon actually
-       follows the spiral path instead of chasing a target that
-       runs away from it every tick.
-    ───────────────────────────────────────────────────────────── */
+    /* Phase 2 — Spiral outward */
     AbilityTimer += DeltaTime;
 
-    // Current spiral target
     FVector SpiralTarget;
     SpiralTarget.X = SearchLocation.X + FMath::Cos(Angle) * CurrentRadius;
     SpiralTarget.Y = SearchLocation.Y + FMath::Sin(Angle) * CurrentRadius;
@@ -68,11 +60,10 @@ void UDragonAbility_SpiralSearch::Tick(float DeltaTime)
 
     float DistToTarget = FVector::Dist2D(DragonLoc, SpiralTarget);
 
-    // Only step forward along spiral when close enough to current point
     if (DistToTarget < SpiralStepThreshold)
     {
-        Angle         += SpiralSpeed;          // fixed angle step, not DeltaTime
-        CurrentRadius += RadiusGrowth;         // fixed radius step per waypoint
+        Angle         += SpiralSpeed;
+        CurrentRadius += RadiusGrowth;
     }
 
     Flight->SetAirTarget(SpiralTarget);
@@ -86,4 +77,15 @@ void UDragonAbility_SpiralSearch::Tick(float DeltaTime)
 bool UDragonAbility_SpiralSearch::IsFinished() const
 {
     return bFinished;
+}
+
+// Always interruptible — just searching
+bool UDragonAbility_SpiralSearch::CanBeInterrupted() const
+{
+    return true;
+}
+
+void UDragonAbility_SpiralSearch::Abort(EDragonInterruptReason Reason)
+{
+    Super::Abort(Reason);
 }

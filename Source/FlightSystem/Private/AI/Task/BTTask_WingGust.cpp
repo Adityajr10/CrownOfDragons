@@ -6,6 +6,7 @@
 #include "AI/Ability/DragonAbility_WingGust.h"
 #include "AI/Component/DragonAbilityComponent.h"
 #include "AI/Ability/DragonAbility_WingGust.h"
+#include "Kismet/GameplayStatics.h"
 
 UBTTask_WingGust::UBTTask_WingGust()
 {
@@ -29,14 +30,13 @@ EBTNodeResult::Type UBTTask_WingGust::ExecuteTask(
 	if (!AbilityComp || !AbilityClass)
 		return EBTNodeResult::Failed;
 
-	UDragonAbility_WingGust* Ability =
-		NewObject<UDragonAbility_WingGust>(Dragon, AbilityClass);
+	AActor* Player =
+		UGameplayStatics::GetPlayerPawn(Dragon, 0);
 
-	if (!Ability) return EBTNodeResult::Failed;
+	UDragonAbility* Ability =
+		NewObject<UDragonAbility>(Dragon, AbilityClass);
 
-	Ability->SetGustMode(GustMode);
-
-	AbilityComp->StartAbility(Ability, nullptr);
+	AbilityComp->StartAbility(Ability, Player);
 
 	return EBTNodeResult::InProgress;
 }

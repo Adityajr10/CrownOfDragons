@@ -15,7 +15,7 @@
 void UDragonFireProjectile::Start(ADragonBaseAI* InOwner, AActor* InTarget)
 {
     Super::Start(InOwner, InTarget);
-
+    AbilityType = EDragonAbilityType::FireBreath;
     MoveTarget = FVector::ZeroVector;
     bReachedPoint = false;
     bFired = false;
@@ -110,4 +110,9 @@ void UDragonFireProjectile::Tick(float DeltaTime)
 
         bFinished = true;
     }
+}
+
+bool UDragonFireProjectile::IsFinished() const
+{
+    return bFinished;
 }
